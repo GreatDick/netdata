@@ -496,13 +496,29 @@ function toggleAgentItem(e, guid) {
     }
 }
 
-// When you stream metrics from netdata to netdata, the recieving netdata now
+// When you stream metrics from netdata to netdata, the receiving netdata now
 // has multiple host databases. It's own, and multiple mirrored. Mirrored databases
 // can be accessed with <http://localhost:19999/host/NAME/>
+const OLD_DASHBOARD_SUFFIX = "old"
+let isOldSuffix = true
+try {
+    const currentScriptMainJs = document.currentScript;
+    const mainJsSrc = currentScriptMainJs.getAttribute("src")
+    isOldSuffix = mainJsSrc.startsWith("../main.js")
+} catch {
+    console.warn("current script not detecting, assuming the dashboard is running with /old suffix")
+}
+
+function transformWithOldSuffix(url) {
+    return isOldSuffix ? `../${url}` : url
+}
+
 function renderStreamedHosts(options) {
     let html = `<div class="info-item">Databases streamed to this agent</div>`;
 
-    var base = document.location.origin.toString() + document.location.pathname.toString();
+    var base = document.location.origin.toString() +
+      document.location.pathname.toString()
+        .replace(isOldSuffix ? `/${OLD_DASHBOARD_SUFFIX}` : "", "");
     if (base.endsWith("/host/" + options.hostname + "/")) {
         base = base.substring(0, base.length - ("/host/" + options.hostname + "/").toString().length);
     }
@@ -536,10 +552,10 @@ function renderStreamedHosts(options) {
         displayedDatabases = true;
 
         if (hostname === master) {
-            url = `${base}/`;
+            url = isOldSuffix ? `${base}/${OLD_DASHBOARD_SUFFIX}/` : `${base}/`;
             icon = 'home';
         } else {
-            url = `${base}/host/${hostname}/`;
+            url = isOldSuffix ? `${base}/host/${hostname}/${OLD_DASHBOARD_SUFFIX}/` : `${base}/host/${hostname}/`;
             icon = 'window-restore';
         }
 
@@ -652,13 +668,13 @@ function renderMachines(machinesArray) {
         if (machines) {
             html += (
                 `<div class="info-item">
-                    <a href="https://github.com/netdata/netdata/tree/master/registry#netdata-registry" target="_blank">Your nodes list is empty</a>
+                    <a href="https://github.com/netdata/netdata/tree/master/registry#registry" target="_blank">Your nodes list is empty</a>
                 </div>`
             )
         } else {
             html += (
                 `<div class="info-item">
-                    <a href="https://github.com/netdata/netdata/tree/master/registry#netdata-registry" target="_blank">Failed to contact the registry</a>
+                    <a href="https://github.com/netdata/netdata/tree/master/registry#registry" target="_blank">Failed to contact the registry</a>
                 </div>`
             )
         }
@@ -790,18 +806,13 @@ function renderMyNetdataMenu(machinesArray) {
     if (!isSignedIn()) {
         html += (
             `<div class="agent-item">
-                <i class="fas fa-tv"></i>
-                <a onClick="openAuthenticatedUrl('console.html');" target="_blank">Nodes<sup class="beta"> beta</sup></a>
-                <div></div>
-            </div>
-            <div class="agent-item">
                 <i class="fas fa-cog""></i>
                 <a href="#" onclick="switchRegistryModalHandler(); return false;">Switch Identity</a>
                 <div></div>
             </div>
             <div class="agent-item">
                 <i class="fas fa-question-circle""></i>
-                <a href="https://github.com/netdata/netdata/tree/master/registry#netdata-registry" target="_blank">What is this?</a>
+                <a href="https://github.com/netdata/netdata/tree/master/registry#registry" target="_blank">What is this?</a>
                 <div></div>
             </div>`
         )
@@ -1804,8 +1815,8 @@ function renderPage(menus, data) {
 
     const isMemoryModeDbEngine = data.memory_mode === "dbengine";
 
-    sidebar += '<li class="" style="padding-top:15px;"><a href="https://docs.netdata.cloud/collectors/quickstart/" target="_blank"><i class="fas fa-plus"></i> Add more charts</a></li>';
-    sidebar += '<li class=""><a href="https://docs.netdata.cloud/health/quickstart/" target="_blank"><i class="fas fa-plus"></i> Add more alarms</a></li>';
+    sidebar += '<li class="" style="padding-top:15px;"><a href="https://learn.netdata.cloud/docs/agent/collectors/quickstart/" target="_blank"><i class="fas fa-plus"></i> Add more charts</a></li>';
+    sidebar += '<li class=""><a href="https://learn.netdata.cloud/docs/agent/health/quickstart/" target="_blank"><i class="fas fa-plus"></i> Add more alarms</a></li>';
     sidebar += '<li class="" style="margin:20px;color:#666;"><small>Every ' +
       ((data.update_every === 1) ? 'second' : data.update_every.toString() + ' seconds') + ', ' +
       'Netdata collects <strong>' + data.dimensions_count.toLocaleString() + '</strong> metrics on ' +
@@ -1817,7 +1828,7 @@ function renderPage(menus, data) {
 
     if (!isMemoryModeDbEngine) {
         sidebar += '<br />&nbsp;<br />Get more history by ' +
-          '<a href="https://docs.netdata.cloud/docs/configuration-guide/#increase-the-metrics-retention-period" target=_blank>configuring Netdata\'s <strong>history</strong></a> or using the <a href="https://docs.netdata.cloud/database/engine/" target=_blank>DB engine.</a>';
+          '<a href="https://learn.netdata.cloud/guides/longer-metrics-storage#using-the-round-robin-database" target=_blank>configuring Netdata\'s <strong>history</strong></a> or using the <a href="https://learn.netdata.cloud/docs/agent/database/engine/" target=_blank>DB engine.</a>';
     }
 
     sidebar += '<br/>&nbsp;<br/><strong>netdata</strong><br/>' + data.version.toString() + '</small></li>';
@@ -1932,7 +1943,7 @@ function renderChartsAndMenu(data) {
 
 function loadJs(url, callback) {
     $.ajax({
-        url: url,
+        url: url.startsWith("http") ? url : transformWithOldSuffix(url),
         cache: true,
         dataType: "script",
         xhrFields: { withCredentials: true } // required for the cookie
@@ -1979,7 +1990,7 @@ function loadBootstrapSlider(callback) {
     if (bootstrapSliderLoaded === false) {
         bootstrapSliderLoaded = true;
         loadJs('lib/bootstrap-slider-10.0.0.min.js', function () {
-            NETDATA._loadCSS('css/bootstrap-slider-10.0.0.min.css');
+            NETDATA._loadCSS(transformWithOldSuffix("css/bootstrap-slider-10.0.0.min.css"));
             callback();
         });
     } else {
@@ -2829,7 +2840,7 @@ function initializeDynamicDashboardWithData(data) {
     }
 }
 
-// an object to keep initilization configuration
+// an object to keep initialization configuration
 // needed due to the async nature of the XSS modal
 var initializeConfig = {
     url: null,
@@ -3041,7 +3052,7 @@ function notifyForUpdate(force) {
             versionLog('<p><big>You already have the latest netdata!</big></p><p>No update yet?<br/>We probably need some motivation to keep going on!</p><p>If you haven\'t already, <a href="https://github.com/netdata/netdata" target="_blank">give netdata a <b><i class="fas fa-star"></i></b> at its github page</a>.</p>');
         } else {
             save = true;
-            var compare = 'https://docs.netdata.cloud/changelog/';
+            var compare = 'https://learn.netdata.cloud/docs/agent/changelog/';
             versionLog('<p><big><strong>New version of netdata available!</strong></big></p><p>Latest version: <b><code>' + sha2 + '</code></b></p><p><a href="' + compare + '" target="_blank">Click here for the changes log</a> and<br/><a href="https://github.com/netdata/netdata/tree/master/packaging/installer/UPDATE.md" target="_blank">click here for directions on updating</a> your netdata installation.</p><p>We suggest to review the changes log for new features you may be interested, or important bug fixes you may need.<br/>Keeping your netdata updated is generally a good idea.</p>');
 
             document.getElementById('update_badge').innerHTML = '!';
@@ -4420,7 +4431,7 @@ function runOnceOnDashboardWithjQuery() {
 function finalizePage() {
     // resize all charts - without starting the background thread
     // this has to be done while NETDATA is paused
-    // if we ommit this, the affix menu will be wrong, since all
+    // if we omit this, the affix menu will be wrong, since all
     // the Dom elements are initially zero-sized
     NETDATA.parseDom();
 
@@ -4805,11 +4816,7 @@ function signInDidClick(e) {
 }
 
 function shouldShowSignInBanner() {
-    if (isSignedIn()) {
-        return false;
-    }
-
-    return localStorage.getItem("signInBannerClosed") != "true";
+    return false;
 }
 
 function closeSignInBanner() {
@@ -4893,43 +4900,6 @@ function signOut() {
     cloudSSOSignOut();
 }
 
-function renderAccountUI() {
-    if (!NETDATA.registry.isCloudEnabled) {
-        return
-    }
-
-    const container = document.getElementById("account-menu-container");
-    if (isSignedIn()) {
-        container.removeAttribute("title");
-        container.removeAttribute("data-original-title");
-        container.removeAttribute("data-placement");
-        container.innerHTML = (
-            `<a href="#" class="dropdown-toggle" data-toggle="dropdown"><span id="amc-account-name"></span> <strong class="caret"></strong></a>
-            <ul id="cloud-menu" class="dropdown-menu scrollable-menu inpagemenu" role="menu">   
-                <li>
-                    <a onclick="openAuthenticatedUrl('console.html');" target="_blank" class="btn">
-                    <i class="fas fa-tv"></i>&nbsp;&nbsp;<span class="hidden-sm hidden-md">Nodes<sup class="beta"> beta</sup></span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="btn" onclick="signOutDidClick(event); return false">
-                    <i class="fas fa-sign-out-alt"></i>&nbsp;&nbsp;<span class="hidden-sm hidden-md">Sign Out</span>
-                    </a>
-                </li>
-            </ul>`
-        )
-        document.getElementById("amc-account-name").textContent = cloudAccountName; // Anti-XSS
-    } else {
-        container.setAttribute("data-original-title", "sign in");
-        container.setAttribute("data-placement", "bottom");
-        container.innerHTML = (
-            `<a href="#" class="btn sign-in-btn theme-${netdataTheme}" onclick="signInDidClick(event); return false">
-                <i class="fas fa-sign-in-alt"></i>&nbsp;<span class="hidden-sm hidden-md">Sign In</span>
-            </a>`
-        )
-    }
-}
-
 function handleMessage(e) {
     switch (e.data.type) {
         case "sign-in":
@@ -4962,7 +4932,6 @@ function handleSignInMessage(e) {
 
 function handleSignOutMessage(e) {
     clearCloudVariables();
-    renderAccountUI();
     renderMyNetdataMenu(registryAgents);
 }
 
@@ -5116,7 +5085,6 @@ function initCloud() {
     }
 
     touchAgent();
-    renderAccountUI();
 }
 
 // This callback is called after NETDATA.registry is initialized.

@@ -1,8 +1,7 @@
 <!--
----
 title: "Package Maintainers"
+date: 2020-03-31
 custom_edit_url: https://github.com/netdata/netdata/edit/master/packaging/maintainers/README.md
----
 -->
 
 # Package Maintainers
@@ -23,7 +22,7 @@ This page tracks the package maintainers for Netdata, for various operating syst
 | Debian | Release | @lhw @FedericoCeratto | [netdata @ debian](http://salsa.debian.org/debian/netdata) |
 | Slackware | Release | @willysr | [netdata @ slackbuilds](https://slackbuilds.org/repository/14.2/system/netdata/) |
 | Ubuntu |  |  |  |
-| Red Hat / Fedora / Centos |  |  |  |
+| Red Hat / Fedora / CentOS |  |  |  |
 | SUSE SLE / openSUSE Tumbleweed & Leap |  |  | [netdata @ SUSE OpenBuildService](https://software.opensuse.org/package/netdata) |
 
 ---
@@ -36,11 +35,11 @@ This page tracks the package maintainers for Netdata, for various operating syst
 
 ---
 
-## MacOS
+## macOS
 
 | System | URL | Core Developer | Package Maintainer
 |:-:|:-:|:-:|:-:|
-| MacOS Homebrew Formula|[link](https://github.com/Homebrew/homebrew-core/blob/master/Formula/netdata.rb)|@vlvkobal|@rickard-von-essen
+| macOS Homebrew Formula|[link](https://github.com/Homebrew/homebrew-core/blob/master/Formula/netdata.rb)|@vlvkobal|@rickard-von-essen
 
 ---
 

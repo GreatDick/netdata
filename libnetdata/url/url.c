@@ -31,8 +31,11 @@ char *url_encode(char *str) {
         else if (*str == ' ')
             *pbuf++ = '+';
 
-        else
-            *pbuf++ = '%', *pbuf++ = to_hex(*str >> 4), *pbuf++ = to_hex(*str & 15);
+        else{
+            *pbuf++ = '%';
+            *pbuf++ = to_hex(*str >> 4);
+            *pbuf++ = to_hex(*str & 15);
+        }
 
         str++;
     }
@@ -65,7 +68,7 @@ char url_percent_escape_decode(char *s) {
  *
  * @param c is the utf8 character
  *  *
- * @return It reurns the length of the specific character.
+ * @return It returns the length of the specific character.
  */
 char url_utf8_get_byte_length(char c) {
     if(!IS_UTF8_BYTE(c))
@@ -223,7 +226,7 @@ char *url_decode_r(char *to, char *url, size_t size) {
 
     *d = '\0';
 
-    if(unlikely( utf8_check((unsigned  char *)to) )) //NULL means sucess here
+    if(unlikely( utf8_check((unsigned  char *)to) )) //NULL means success here
         return NULL;
 
     return to;

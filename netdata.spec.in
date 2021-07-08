@@ -5,6 +5,17 @@
 #TODO: Temporary fix for the build-id error during go.d plugin set up
 %global _missing_build_ids_terminate_build 0
 
+# XXX: We are using automatic `Requires:` generation for libraries
+# whenever possible, DO NOT LIST LIBRARY DEPENDENCIES UNLESS THE RESULTANT
+# PACKAGE IS BROKEN WITHOUT THEM.
+AutoReqProv: yes
+
+%if "@HAVE_LIBBPF@" == "1"
+%global have_bpf 1
+%else
+%global have_bpf 0
+%endif
+
 # This is temporary and should eventually be resolved. This bypasses
 # the default rhel __os_install_post which throws a python compile
 # error.
@@ -93,6 +104,10 @@ Group:		Applications/System
 Source0:	https://github.com/netdata/%{name}/releases/download/%{version}/%{name}-%{version}.tar.gz
 URL:		http://my-netdata.io
 
+# Remove conflicting EPEL packages
+Obsoletes:  %{name}-conf
+Obsoletes:  %{name}-data
+
 # #####################################################################
 # Core build/install/runtime dependencies
 # #####################################################################
@@ -117,14 +132,22 @@ BuildRequires: zlib-devel
 BuildRequires: libuuid-devel
 BuildRequires: libuv-devel >= 1
 BuildRequires: openssl-devel
+%if 0%{?centos_ver} >= 8 || 0%{?fedora}
+BuildRequires: libwebsockets-devel >= 3.2
+%endif
 %if 0%{?suse_version}
 BuildRequires: judy-devel
 BuildRequires: liblz4-devel
-BuildRequires: json-glib-devel
+BuildRequires: libjson-c-devel
 %else
+%if 0%{?fedora}
 BuildRequires: Judy-devel
 BuildRequires: lz4-devel
 BuildRequires: json-c-devel
+%else
+BuildRequires: lz4-devel
+BuildRequires: json-c-devel
+%endif
 %endif
 
 # Core build requirements for service install
@@ -132,32 +155,19 @@ BuildRequires: json-c-devel
 
 # Runtime dependencies
 #
-Requires:      python
-Requires:      zlib
-%if 0%{?suse_version}
-# for libuv, Requires version >= 1
-Requires:      libuv1
-Requires:      libJudy1
-Requires:      json-glib
-Requires:      libuuid1
+%if 0%{?centos_ver} == 7 || 0%{?centos_ver} == 6
+Requires: python
 %else
-# for libuv, Requires version >= 1
-Requires:      libuv >= 1
-Requires:      Judy
-Requires:      json-c
-Requires:      libuuid
+%if 0%{?centos_ver} == 8
+Requires: python38
+%else
+Requires: python3
 %endif
-Requires:      openssl
-Requires:      lz4
+%endif
 
 # Core requirements for the install to succeed
 Requires(pre): /usr/sbin/groupadd
 Requires(pre): /usr/sbin/useradd
-%if 0%{?suse_version} >= 1140
-Requires(post): libcap1
-%else
-Requires(post): libcap
-%endif
 
 %{netdata_initd_requires}
 
@@ -173,19 +183,6 @@ BuildRequires:  libmnl-devel
 BuildRequires:  libnetfilter_acct-devel
 %endif
 
-%if 0%{?suse_version}
-Requires: libmnl0
-%else
-Requires: libmnl
-%endif
-
-%if 0%{?fedora}
-Requires: libnetfilter_acct
-%else
-%if 0%{?suse_version} >= 1140
-Requires: libnetfilter_acct1
-%endif
-%endif
 # end nfacct plugin dependencies
 
 # freeipmi plugin dependencies
@@ -206,16 +203,6 @@ BuildRequires: libprotobuf-c-devel
 %else
 BuildRequires: protobuf-c-devel
 %endif
-
-%if 0%{?suse_version}
-Requires: libsnappy1
-Requires: protobuf-c
-Requires: libprotobuf15
-%else
-Requires: snappy
-Requires: protobuf-c
-Requires: protobuf
-%endif
 # end - prometheus remote write dependencies
 
 # #####################################################################
@@ -233,21 +220,36 @@ happened, on your systems and applications.
 
 %prep
 %setup -q -n %{name}-%{version}
-${RPM_BUILD_DIR}/%{name}-%{version}/packaging/bundle-mosquitto.sh ${RPM_BUILD_DIR}/%{name}-%{version}
-${RPM_BUILD_DIR}/%{name}-%{version}/packaging/bundle-lws.sh ${RPM_BUILD_DIR}/%{name}-%{version}
+export CFLAGS="${CFLAGS} -fPIC" && ${RPM_BUILD_DIR}/%{name}-%{version}/packaging/bundle-mosquitto.sh ${RPM_BUILD_DIR}/%{name}-%{version}
+%if 0%{?centos_ver} < 8 || 0%{!?fedora:1}
+export CFLAGS="${CFLAGS} -fPIC" && ${RPM_BUILD_DIR}/%{name}-%{version}/packaging/bundle-lws.sh ${RPM_BUILD_DIR}/%{name}-%{version}
+%endif
+# Only bundle libJudy if this isn't Fedora or SUSE
+%if 0%{!?fedora:1} && 0%{!?suse_version:1}
+export CFLAGS="${CFLAGS} -fPIC" && ${RPM_BUILD_DIR}/%{name}-%{version}/packaging/bundle-judy.sh ${RPM_BUILD_DIR}/%{name}-%{version}
+%endif
+%if 0%{?have_bpf}
+export CFLAGS="${CFLAGS} -fPIC" && ${RPM_BUILD_DIR}/%{name}-%{version}/packaging/bundle-libbpf.sh ${RPM_BUILD_DIR}/%{name}-%{version}
+%endif
 
 %build
 # Conf step
 autoreconf -ivf
 %configure \
+	%if 0%{!?fedora:1} && 0%{!?suse_version:1}
+	--with-bundled-libJudy \
+	%endif
+	%if 0%{?centos_ver} < 8 || 0%{!?fedora:1}
+	--with-bundled-lws \
+	%endif
 	--prefix="%{_prefix}" \
 	--sysconfdir="%{_sysconfdir}" \
 	--localstatedir="%{_localstatedir}" \
 	--libexecdir="%{_libexecdir}" \
-        --libdir="%{_libdir}" \
+	--libdir="%{_libdir}" \
 	--with-zlib \
 	--with-math \
-	--with-user=netdata \
+	--with-user=netdata
 
 # Build step
 %{__make} %{?_smp_mflags}
@@ -279,8 +281,10 @@ install -m 4750 -p apps.plugin "${RPM_BUILD_ROOT}%{_libexecdir}/%{name}/plugins.
 install -m 4750 -p perf.plugin "${RPM_BUILD_ROOT}%{_libexecdir}/%{name}/plugins.d/perf.plugin"
 
 # ###########################################################
-# Install ebpf_process.plugin
-install -m 4750 -p ebpf_process.plugin "${RPM_BUILD_ROOT}%{_libexecdir}/%{name}/plugins.d/ebpf_process.plugin"
+# Install ebpf.plugin
+%if 0%{?have_bpf}
+install -m 4750 -p ebpf.plugin "${RPM_BUILD_ROOT}%{_libexecdir}/%{name}/plugins.d/ebpf.plugin"
+%endif
 
 # ###########################################################
 # Install cups.plugin
@@ -316,7 +320,7 @@ install -m 755 system/netdata-init-d \
 # ############################################################
 # Package Go within netdata (TBD: Package it separately)
 safe_sha256sum() {
-	# Within the contexct of the installer, we only use -c option that is common between the two commands
+	# Within the context of the installer, we only use -c option that is common between the two commands
 	# We will have to reconsider if we start non-common options
 	if command -v sha256sum >/dev/null 2>&1; then
 		sha256sum $@
@@ -407,6 +411,10 @@ install_go() {
 install_go
 install -m 0640 -p go.d.plugin "${RPM_BUILD_ROOT}%{_libexecdir}/%{name}/plugins.d/go.d.plugin"
 
+%if 0%{?have_bpf}
+${RPM_BUILD_DIR}/%{name}-%{version}/packaging/bundle-ebpf.sh ${RPM_BUILD_DIR}/%{name}-%{version} ${RPM_BUILD_ROOT}%{_libexecdir}/%{name}/plugins.d
+%endif
+
 %pre
 
 # User/Group creations, as needed
@@ -448,7 +456,7 @@ rm -rf "${RPM_BUILD_ROOT}"
 %{_sysconfdir}/rc.d/init.d/netdata
 %endif
 
-%defattr(4750,root,netdata,0750)
+%defattr(0750,root,netdata,0750)
 
 %dir %{_libexecdir}/%{name}/python.d
 %dir %{_libexecdir}/%{name}/charts.d
@@ -465,18 +473,20 @@ rm -rf "${RPM_BUILD_ROOT}"
 # cgroup-network detects the network interfaces of CGROUPs
 # it must be able to use setns() and run cgroup-network-helper.sh as root
 # the helper script reads /proc/PID/fdinfo/* files, runs virsh, etc.
-%caps(cap_setuid=ep) %attr(4750,root,netdata) %{_libexecdir}/%{name}/plugins.d/cgroup-network
+%attr(4750,root,netdata) %{_libexecdir}/%{name}/plugins.d/cgroup-network
 %attr(0750,root,netdata) %{_libexecdir}/%{name}/plugins.d/cgroup-network-helper.sh
 %endif
 
 # perf plugin
-%caps(cap_setuid=ep) %attr(4750,root,netdata) %{_libexecdir}/%{name}/plugins.d/perf.plugin
+# This should be CAP_PERFMON once RPM finally learns about it, but needs to be CAP_SYS_ADMIN for now.
+# %caps(cap_perfmon=ep) %attr(0750,root,netdata) %{_libexecdir}/%{name}/plugins.d/perf.plugin
+%caps(cap_sys_admin=ep) %attr(0750,root,netdata) %{_libexecdir}/%{name}/plugins.d/perf.plugin
 
 # perf plugin
-%caps(cap_setuid=ep) %attr(4750,root,netdata) %{_libexecdir}/%{name}/plugins.d/slabinfo.plugin
+%caps(cap_dac_read_search=ep) %attr(0750,root,netdata) %{_libexecdir}/%{name}/plugins.d/slabinfo.plugin
 
 # freeipmi files
-%caps(cap_setuid=ep) %attr(4750,root,netdata) %{_libexecdir}/%{name}/plugins.d/freeipmi.plugin
+%attr(4750,root,netdata) %{_libexecdir}/%{name}/plugins.d/freeipmi.plugin
 
 # Enforce 0644 for files and 0755 for directories
 # for the netdata web directory
@@ -527,6 +537,8 @@ are sensor monitoring, system event monitoring, power control, and serial-over-L
 %attr(4750,root,netdata) %{_libexecdir}/%{name}/plugins.d/freeipmi.plugin
 
 %changelog
+* Wed Sep 16 2020 Austin Hemmelgarn <austin@netdata.cloud> 0.0.0-14
+- Convert to using 'AutoReq: yes' for library dependencies.
 * Thu Feb 13 2020 Austin Hemmelgarn <austin@netdata.cloud> 0.0.0-13
 - Add handling for custom libmosquitto fork
 * Wed Jan 01 2020 Austin Hemmelgarn <austin@netdata.cloud> 0.0.0-12

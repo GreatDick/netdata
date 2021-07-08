@@ -37,6 +37,16 @@ declare -A libreswan_established_add_time=()
 # we need this to avoid converting tunnel names to chart IDs on every iteration
 declare -A libreswan_tunnel_charts=()
 
+is_able_sudo_ipsec() {
+  if ! sudo -n -l "${IPSEC_CMD}" whack --status > /dev/null 2>&1; then
+    return 1
+  fi
+  if ! sudo -n -l "${IPSEC_CMD}" whack --trafficstatus > /dev/null 2>&1; then
+    return 1
+  fi
+  return 0
+}
+
 # run the ipsec command
 libreswan_ipsec() {
   if [ ${libreswan_sudo} -ne 0 ]; then
@@ -68,7 +78,7 @@ libreswan_get() {
       libreswan_ipsec whack --trafficstatus
     } | sed -n \
       -e "s|[0-9]\+ #\([0-9]\+\): \"\(.*\)\".*IPsec SA established.*newest IPSEC.*|libreswan_connected_tunnels[\"\1\"]=\"\2\"|p" \
-      -e "s|[0-9]\+ #\([0-9]\+\): \"\(.*\)\",.* add_time=\([0-9]\+\),.* inBytes=\([0-9]\+\),.* outBytes=\([0-9]\+\).*|libreswan_traffic_in[\"\1\"]=\"\4\"; libreswan_traffic_out[\"\1\"]=\"\5\"; libreswan_established_add_time[\"\1\"]=\"\3\";|p"
+      -e "s|[0-9]\+ #\([0-9]\+\): \"\(.*\)\",\{0,1\}.* add_time=\([0-9]\+\),.* inBytes=\([0-9]\+\),.* outBytes=\([0-9]\+\).*|libreswan_traffic_in[\"\1\"]=\"\4\"; libreswan_traffic_out[\"\1\"]=\"\5\"; libreswan_established_add_time[\"\1\"]=\"\3\";|p"
   ) || return 1
 
   # check we got some data
@@ -89,6 +99,11 @@ libreswan_check() {
   # shellcheck disable=SC2143
   if [ -z "$(ipsec --version | grep -i libreswan)" ]; then
     error "ipsec command is not Libreswan. Disabling Libreswan plugin."
+    return 1
+  fi
+
+  if [ ${libreswan_sudo} -ne 0 ] && ! is_able_sudo_ipsec; then
+    error "not enough permissions to execute ipsec with sudo. Disabling Libreswan plugin."
     return 1
   fi
 
@@ -155,7 +170,7 @@ END
 VALUESEOF
 }
 
-# _update is called continiously, to collect the values
+# _update is called continuously, to collect the values
 libreswan_update() {
   # the first argument to this function is the microseconds since last update
   # pass this parameter to the BEGIN statement (see bellow).

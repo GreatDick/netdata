@@ -69,15 +69,23 @@ int is_valid_connector(char *type, int check_reserved)
 
     if (!strcmp(type, "graphite") || !strcmp(type, "graphite:plaintext")) {
         return rc;
+    } else if (!strcmp(type, "graphite:http") || !strcmp(type, "graphite:https")) {
+        return rc;
+    } else if (!strcmp(type, "json") || !strcmp(type, "json:plaintext")) {
+        return rc;
+    } else if (!strcmp(type, "json:http") || !strcmp(type, "json:https")) {
+        return rc;
     } else if (!strcmp(type, "opentsdb") || !strcmp(type, "opentsdb:telnet")) {
         return rc;
     } else if (!strcmp(type, "opentsdb:http") || !strcmp(type, "opentsdb:https")) {
         return rc;
-    } else if (!strcmp(type, "json") || !strcmp(type, "json:plaintext")) {
-        return rc;
     } else if (!strcmp(type, "prometheus_remote_write")) {
         return rc;
+    } else if (!strcmp(type, "prometheus_remote_write:http") || !strcmp(type, "prometheus_remote_write:https")) {
+        return rc;
     } else if (!strcmp(type, "kinesis") || !strcmp(type, "kinesis:plaintext")) {
+        return rc;
+    } else if (!strcmp(type, "pubsub") || !strcmp(type, "pubsub:plaintext")) {
         return rc;
     } else if (!strcmp(type, "mongodb") || !strcmp(type, "mongodb:plaintext")) {
         return rc;
@@ -115,15 +123,15 @@ static int appconfig_option_compare(void *a, void *b) {
     else return strcmp(((struct config_option *)a)->name, ((struct config_option *)b)->name);
 }
 
-#define appconfig_option_index_add(co, cv) (struct config_option *)avl_insert_lock(&((co)->values_index), (avl *)(cv))
-#define appconfig_option_index_del(co, cv) (struct config_option *)avl_remove_lock(&((co)->values_index), (avl *)(cv))
+#define appconfig_option_index_add(co, cv) (struct config_option *)avl_insert_lock(&((co)->values_index), (avl_t *)(cv))
+#define appconfig_option_index_del(co, cv) (struct config_option *)avl_remove_lock(&((co)->values_index), (avl_t *)(cv))
 
 static struct config_option *appconfig_option_index_find(struct section *co, const char *name, uint32_t hash) {
     struct config_option tmp;
     tmp.hash = (hash)?hash:simple_hash(name);
     tmp.name = (char *)name;
 
-    return (struct config_option *)avl_search_lock(&(co->values_index), (avl *) &tmp);
+    return (struct config_option *)avl_search_lock(&(co->values_index), (avl_t *) &tmp);
 }
 
 
@@ -136,15 +144,15 @@ int appconfig_section_compare(void *a, void *b) {
     else return strcmp(((struct section *)a)->name, ((struct section *)b)->name);
 }
 
-#define appconfig_index_add(root, cfg) (struct section *)avl_insert_lock(&(root)->index, (avl *)(cfg))
-#define appconfig_index_del(root, cfg) (struct section *)avl_remove_lock(&(root)->index, (avl *)(cfg))
+#define appconfig_index_add(root, cfg) (struct section *)avl_insert_lock(&(root)->index, (avl_t *)(cfg))
+#define appconfig_index_del(root, cfg) (struct section *)avl_remove_lock(&(root)->index, (avl_t *)(cfg))
 
 static struct section *appconfig_index_find(struct config *root, const char *name, uint32_t hash) {
     struct section tmp;
     tmp.hash = (hash)?hash:simple_hash(name);
     tmp.name = (char *)name;
 
-    return (struct section *)avl_search_lock(&root->index, (avl *) &tmp);
+    return (struct section *)avl_search_lock(&root->index, (avl_t *) &tmp);
 }
 
 
@@ -169,15 +177,59 @@ static inline struct section *appconfig_section_create(struct config *root, cons
         error("INTERNAL ERROR: indexing of section '%s', already exists.", co->name);
 
     appconfig_wrlock(root);
-    struct section *co2 = root->sections;
+    struct section *co2 = root->last_section;
     if(co2) {
-        while (co2->next) co2 = co2->next;
         co2->next = co;
+    } else {
+        root->first_section = co;
     }
-    else root->sections = co;
+    root->last_section = co;
     appconfig_unlock(root);
 
     return co;
+}
+
+void appconfig_section_destroy_non_loaded(struct config *root, const char *section)
+{
+    struct section *co;
+    struct config_option *cv, *cv_next;
+
+    debug(D_CONFIG, "Destroying section '%s'.", section);
+
+    co = appconfig_section_find(root, section);
+    if(!co) {
+        error("Could not destroy section '%s'. Not found.", section);
+        return;
+    }
+
+    config_section_wrlock(co);
+    for(cv = co->values; cv ; cv = cv->next) {
+        if (cv->flags & CONFIG_VALUE_LOADED) {
+            /* Do not destroy values that were loaded from the configuration files. */
+            config_section_unlock(co);
+            return;
+        }
+    }
+    for(cv = co->values ; cv ; cv = cv_next) {
+        cv_next = cv->next;
+        if(unlikely(!appconfig_option_index_del(co, cv)))
+            error("Cannot remove config option '%s' from section '%s'.", cv->name, co->name);
+        freez(cv->value);
+        freez(cv->name);
+        freez(cv);
+    }
+    co->values = NULL;
+    config_section_unlock(co);
+
+    if (unlikely(!appconfig_index_del(root, co))) {
+        error("Cannot remove section '%s' from config.", section);
+        return;
+    }
+
+    avl_destroy_lock(&co->values_index);
+    freez(co->name);
+    pthread_mutex_destroy(&co->mutex);
+    freez(co);
 }
 
 
@@ -250,7 +302,7 @@ int appconfig_move(struct config *root, const char *section_old, const char *nam
     if(cv_new) goto cleanup;
 
     if(unlikely(appconfig_option_index_del(co_old, cv_old) != cv_old))
-        error("INTERNAL ERROR: deletion of config '%s' from section '%s', deleted tge wrong config entry.", cv_old->name, co_old->name);
+        error("INTERNAL ERROR: deletion of config '%s' from section '%s', deleted the wrong config entry.", cv_old->name, co_old->name);
 
     if(co_old->values == cv_old) {
         co_old->values = cv_old->next;
@@ -284,33 +336,46 @@ cleanup:
     return ret;
 }
 
-
-char *appconfig_get(struct config *root, const char *section, const char *name, const char *default_value)
+char *appconfig_get_by_section(struct section *co, const char *name, const char *default_value)
 {
     struct config_option *cv;
 
-    debug(D_CONFIG, "request to get config in section '%s', name '%s', default_value '%s'", section, name, default_value);
-
-    struct section *co = appconfig_section_find(root, section);
-    if(!co) co = appconfig_section_create(root, section);
-
+    // Only calls internal to this file check for a NULL result and they do not supply a NULL arg.
+    // External caller should treat NULL as an error case.
     cv = appconfig_option_index_find(co, name, 0);
-    if(!cv) {
+    if (!cv) {
+        if (!default_value) return NULL;
         cv = appconfig_value_create(co, name, default_value);
-        if(!cv) return NULL;
+        if (!cv) return NULL;
     }
     cv->flags |= CONFIG_VALUE_USED;
 
     if((cv->flags & CONFIG_VALUE_LOADED) || (cv->flags & CONFIG_VALUE_CHANGED)) {
         // this is a loaded value from the config file
-        // if it is different that the default, mark it
+        // if it is different than the default, mark it
         if(!(cv->flags & CONFIG_VALUE_CHECKED)) {
-            if(strcmp(cv->value, default_value) != 0) cv->flags |= CONFIG_VALUE_CHANGED;
+            if(default_value && strcmp(cv->value, default_value) != 0) cv->flags |= CONFIG_VALUE_CHANGED;
             cv->flags |= CONFIG_VALUE_CHECKED;
         }
     }
 
     return(cv->value);
+}
+
+
+char *appconfig_get(struct config *root, const char *section, const char *name, const char *default_value)
+{
+    if (default_value == NULL)
+        debug(D_CONFIG, "request to get config in section '%s', name '%s' or fail", section, name);
+    else
+        debug(D_CONFIG, "request to get config in section '%s', name '%s', default_value '%s'", section, name, default_value);
+
+    struct section *co = appconfig_section_find(root, section);
+    if (!co && !default_value)
+        return NULL;
+    if(!co) co = appconfig_section_create(root, section);
+
+    return appconfig_get_by_section(co, name, default_value);
 }
 
 long long appconfig_get_number(struct config *root, const char *section, const char *name, long long value)
@@ -335,6 +400,23 @@ LONG_DOUBLE appconfig_get_float(struct config *root, const char *section, const 
     return str2ld(s, NULL);
 }
 
+static inline int appconfig_test_boolean_value(char *s) {
+    if(!strcasecmp(s, "yes") || !strcasecmp(s, "true") || !strcasecmp(s, "on")
+       || !strcasecmp(s, "auto") || !strcasecmp(s, "on demand"))
+        return 1;
+
+    return 0;
+}
+
+int appconfig_get_boolean_by_section(struct section *co, const char *name, int value) {
+    char *s;
+
+    s = appconfig_get_by_section(co, name, (!value)?"no":"yes");
+    if(!s) return value;
+
+    return appconfig_test_boolean_value(s);
+}
+
 int appconfig_get_boolean(struct config *root, const char *section, const char *name, int value)
 {
     char *s;
@@ -344,8 +426,7 @@ int appconfig_get_boolean(struct config *root, const char *section, const char *
     s = appconfig_get(root, section, name, s);
     if(!s) return value;
 
-    if(!strcasecmp(s, "yes") || !strcasecmp(s, "true") || !strcasecmp(s, "on") || !strcasecmp(s, "auto") || !strcasecmp(s, "on demand")) return 1;
-    return 0;
+    return appconfig_test_boolean_value(s);
 }
 
 int appconfig_get_boolean_ondemand(struct config *root, const char *section, const char *name, int value)
@@ -526,7 +607,8 @@ int appconfig_load(struct config *root, char *filename, int overwrite_used, cons
             s++;
 
             if (is_exporter_config) {
-                global_exporting_section = !(strcmp(s, CONFIG_SECTION_EXPORTING));
+                global_exporting_section =
+                    !(strcmp(s, CONFIG_SECTION_EXPORTING)) || !(strcmp(s, CONFIG_SECTION_PROMETHEUS));
                 if (unlikely(!global_exporting_section)) {
                     int rc;
                     rc = is_valid_connector(s, 0);
@@ -678,7 +760,7 @@ void appconfig_generate(struct config *root, BUFFER *wb, int only_changed)
         }
 
         appconfig_wrlock(root);
-        for(co = root->sections; co ; co = co->next) {
+        for(co = root->first_section; co ; co = co->next) {
             if(!strcmp(co->name, CONFIG_SECTION_GLOBAL)
                || !strcmp(co->name, CONFIG_SECTION_WEB)
                || !strcmp(co->name, CONFIG_SECTION_STATSD)

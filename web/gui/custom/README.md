@@ -1,8 +1,7 @@
 <!--
----
 title: "Custom dashboards"
+description: "Build custom dashboards with key metrics from one or more nodes running the Netdata Agent and host them anywhere."
 custom_edit_url: https://github.com/netdata/netdata/edit/master/web/gui/custom/README.md
----
 -->
 
 # Custom dashboards
@@ -17,16 +16,16 @@ You can:
 
 You can also add Netdata charts to existing web pages.
 
-Check this **[very simple working example of a custom
-dashboard](http://netdata.firehol.org/demo.html)**, and its **[html
-source](../demo.html)**.
+Check this **[very simple working example of a custom dashboard](http://netdata.firehol.org/demo.html)**, and its
+**[html source](https://raw.githubusercontent.com/netdata/netdata/master/web/gui/demo.html)**.
 
 You should also look at the [custom dashboard
 template](https://my-netdata.io/dashboard.html), which contains samples of all
-supported charts. The code is [here](../dashboard.html).
+supported charts. The code is [here](https://raw.githubusercontent.com/netdata/netdata/master/web/gui/dashboard.html).
 
-If you plan to put the dashboard on TV, check out [tv.html](../tv.html). Here's
-is a screenshot of it, monitoring two servers on the same page:
+If you plan to put the dashboard on TV, check out
+[tv.html](https://raw.githubusercontent.com/netdata/netdata/master/web/gui/tv.html). Here's is a screenshot of it,
+monitoring two servers on the same page:
 
 ![image](https://cloud.githubusercontent.com/assets/2662304/14252187/d8d5f78e-fa8e-11e5-990d-99821d38c874.png)
 
@@ -70,68 +69,7 @@ header:
 </html>
 ```
 
-## Dash (Multi-Host Dashboard)
-
-`dash-example.html` is an all-in-one page that automatically fetches graphs from all your hosts. Just add your graphs and charts (or use the defaults) one time using the `dash-*` syntax, and your selections will be automatically replicated for all of your hosts; showing alarms and graphs for all your hosts on **one page!**
-
-__**Dash will only work if you have implemented netdata streaming using `stream.conf`**__
-
-`dash-example.html` was created as an experiment to demonstrate the capabilities of netdata in a multi-host environment. If you desire more features, submit a pull request or check out Netdata Cloud!
-
-### Configure Dash
-
-First, rename the file so it doesn't get overwritten. For instance, with a webroot at `/usr/share/netdata/web`:
-```
-cp /usr/share/netdata/web/dash-example.html /usr/share/netdata/web/dash.html
-```
-
-Find and change the following line in `dash.html` to reflect your Netdata URLs. The second URL is only used if you access your Netdata dashboard through a reverse proxy. The reverse proxy URL is optional; if it is not set then both will use the Netdata host URL.
-
-```js
-/*
-* TUTORIAL: Change this to the URL of your netdata host
-* If you use netdata behind a reverse proxy, add a second parameter for the reverse proxy url like so:
-*         new Dash('http://localhost:19999', 'https://my-domain.com/stats');
-*/
-var dash = new Dash('http://localhost:19999');
-```
-
-### The `dash-*` Syntax
-
-If you want to change the graphs or styling to fit your needs, just add an element to the page as shown. Child divs will be generated to create your graph/chart:
-```
-<div class="dash-graph"                     <----     Use class dash-graph for line graphs, etc
-    data-dash-netdata="system.cpu"          <----     REQUIRED: Use data-dash-netdata to set the data source
-    data-dygraph-valuerange="[0, 100]">     <----     OPTIONAL: This overrides the default config. Any other data-* attributes will
-</div>                                                          be added to the generated div, so you can set any desired options here
-
-<div class="dash-chart"                     <----     Use class dash-chart for pie charts, etc. CHARTS ARE SQUARE
-    data-dash-netdata="system.io"           <----     REQUIRED: Use data-dash-netdata to set the data source
-    data-dimensions="in"                    <----     Use this to override or append default options
-    data-title="Disk Read"                  <----     Use this to override or append default options
-    data-common-units="dash.io">            <----     Use this to override or append default options
-</div>
-```
-
-To change the sizes of graphs and charts, find the `Dash.options` object in `dash.html` and set your preferences:
-```js
-/*
-* TUTORIAL: Change your graph/chart dimensions here. Host columns will automatically adjust.
-*           Charts are square! Their width is the same as their height.
-*/
-this.options = {
-    graph_width: '40em',
-    graph_height: '20em',
-    chart_width: '10em' // Charts are square
-};
-```
-
-To change the display order of your hosts, which is saved in localStorage, click the settings gear in the lower right corner
-
-We hope you like it!
-
 ---
-
 
 ## dashboard.js
 
@@ -183,14 +121,14 @@ by adding this fragment before loading it:
 
 ```html
 <script>var netdataDontStart = true;</script>
-`"
+```
 
 The above, will inform the `dashboard.js` to load everything, but not process the web page until you tell it to.
 You can tell it to start processing the page, by running this javascript code:
 
 ```js
 NETDATA.start();
-`"
+```
 
 Be careful not to call the `NETDATA.start()` multiple times. Each call to this
 function will spawn a new thread that will start refreshing the charts.
@@ -301,9 +239,8 @@ Each chart can get data from a different Netdata server. You can specify the Net
  ></div>
 ```
 
-If you have ephemeral monitoring setup ([More info
-here](../../../streaming/#monitoring-ephemeral-nodes)) and have no direct access
-to the nodes dashboards, you can use the following:
+If you have ephemeral monitoring setup ([More info here](/streaming/README.md#monitoring-ephemeral-nodes)) and have no
+direct access to the nodes dashboards, you can use the following:
 
 ```html
 <div data-netdata="unique.id"
@@ -326,7 +263,7 @@ Netdata supports a number of chart libraries. The default chart library is
 Each chart library has a number of specific settings. To learn more about them,
 you should investigate the documentation of the given chart library, or visit
 the appropriate JavaScript file that defines the library's options. These files
-are concatenated into the monolithin `dashboard.js` for deployment.
+are concatenated into the monolithic `dashboard.js` for deployment.
 
 -   [Dygraph](https://github.com/netdata/netdata/blob/5b57fc441c40959514c4e2d0863be2e6a417e352/web/gui/dashboard.js#L2034)
 -   [d3](https://github.com/netdata/netdata/blob/5b57fc441c40959514c4e2d0863be2e6a417e352/web/gui/dashboard.js#L4095)
@@ -426,7 +363,7 @@ select specific dimensions using this:
 ```
 
 Netdata supports coma (`,`) or pipe (`|`) separated [simple
-patterns](../../../libnetdata/simple_pattern/) for dimensions. By default it
+patterns](/libnetdata/simple_pattern/README.md) for dimensions. By default it
 searches for both dimension IDs and dimension NAMEs. You can control the target
 of the match with: `data-append-options="match-ids"` or
 `data-append-options="match-names"`. Spaces in `data-dimensions=""` are matched
@@ -494,7 +431,7 @@ it, using this:
 
 ### API options
 
-You can append Netdata **[REST API v1](../../api)** data options, using this:
+You can append Netdata **[REST API v1](/web/api/README.md)** data options, using this:
 
 ```html
 <div data-netdata="unique.id"

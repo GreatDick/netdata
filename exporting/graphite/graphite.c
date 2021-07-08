@@ -12,9 +12,20 @@ int init_graphite_instance(struct instance *instance)
 {
     instance->worker = simple_connector_worker;
 
-    struct simple_connector_config *connector_specific_config = mallocz(sizeof(struct simple_connector_config));
+    struct simple_connector_config *connector_specific_config = callocz(1, sizeof(struct simple_connector_config));
     instance->config.connector_specific_config = (void *)connector_specific_config;
     connector_specific_config->default_port = 2003;
+
+    struct simple_connector_data *connector_specific_data = callocz(1, sizeof(struct simple_connector_data));
+    instance->connector_specific_data = connector_specific_data;
+
+#ifdef ENABLE_HTTPS
+    connector_specific_data->flags = NETDATA_SSL_START;
+    connector_specific_data->conn = NULL;
+    if (instance->config.options & EXPORTING_OPTION_USE_TLS) {
+        security_start_ssl(NETDATA_SSL_CONTEXT_EXPORTING);
+    }
+#endif
 
     instance->start_batch_formatting = NULL;
     instance->start_host_formatting = format_host_labels_graphite_plaintext;
@@ -27,21 +38,33 @@ int init_graphite_instance(struct instance *instance)
 
     instance->end_chart_formatting = NULL;
     instance->end_host_formatting = flush_host_labels;
-    instance->end_batch_formatting = NULL;
+    instance->end_batch_formatting = simple_connector_end_batch;
+
+    if (instance->config.type == EXPORTING_CONNECTOR_TYPE_GRAPHITE_HTTP)
+        instance->prepare_header = graphite_http_prepare_header;
+    else
+        instance->prepare_header = NULL;
+
+    instance->check_response = exporting_discard_response;
 
     instance->buffer = (void *)buffer_create(0);
     if (!instance->buffer) {
         error("EXPORTING: cannot create buffer for graphite exporting connector instance %s", instance->config.name);
         return 1;
     }
-    uv_mutex_init(&instance->mutex);
-    uv_cond_init(&instance->cond_var);
+
+    simple_connector_init(instance);
+
+    if (uv_mutex_init(&instance->mutex))
+        return 1;
+    if (uv_cond_init(&instance->cond_var))
+        return 1;
 
     return 0;
 }
 
 /**
- * Copy a label value and substitute underscores in place of charachters which can't be used in Graphite output
+ * Copy a label value and substitute underscores in place of characters which can't be used in Graphite output
  *
  * @param dst a destination string.
  * @param src a source string.
@@ -77,8 +100,8 @@ int format_host_labels_graphite_plaintext(struct instance *instance, RRDHOST *ho
         return 0;
 
     rrdhost_check_rdlock(host);
-    netdata_rwlock_rdlock(&host->labels_rwlock);
-    for (struct label *label = host->labels; label; label = label->next) {
+    netdata_rwlock_rdlock(&host->labels.labels_rwlock);
+    for (struct label *label = host->labels.head; label; label = label->next) {
         if (!should_send_label(instance, label))
             continue;
 
@@ -90,7 +113,7 @@ int format_host_labels_graphite_plaintext(struct instance *instance, RRDHOST *ho
             buffer_sprintf(instance->labels, "%s=%s", label->key, value);
         }
     }
-    netdata_rwlock_unlock(&host->labels_rwlock);
+    netdata_rwlock_unlock(&host->labels.labels_rwlock);
 
     return 0;
 }
@@ -104,7 +127,6 @@ int format_host_labels_graphite_plaintext(struct instance *instance, RRDHOST *ho
  */
 int format_dimension_collected_graphite_plaintext(struct instance *instance, RRDDIM *rd)
 {
-    struct engine *engine = instance->engine;
     RRDSET *st = rd->rrdset;
     RRDHOST *host = st->rrdhost;
 
@@ -123,8 +145,8 @@ int format_dimension_collected_graphite_plaintext(struct instance *instance, RRD
     buffer_sprintf(
         instance->buffer,
         "%s.%s.%s.%s%s%s%s " COLLECTED_NUMBER_FORMAT " %llu\n",
-        engine->config.prefix,
-        engine->config.hostname,
+        instance->config.prefix,
+        (host == localhost) ? instance->config.hostname : host->hostname,
         chart_name,
         dimension_name,
         (host->tags) ? ";" : "",
@@ -145,7 +167,6 @@ int format_dimension_collected_graphite_plaintext(struct instance *instance, RRD
  */
 int format_dimension_stored_graphite_plaintext(struct instance *instance, RRDDIM *rd)
 {
-    struct engine *engine = instance->engine;
     RRDSET *st = rd->rrdset;
     RRDHOST *host = st->rrdhost;
 
@@ -170,8 +191,8 @@ int format_dimension_stored_graphite_plaintext(struct instance *instance, RRDDIM
     buffer_sprintf(
         instance->buffer,
         "%s.%s.%s.%s%s%s%s " CALCULATED_NUMBER_FORMAT " %llu\n",
-        engine->config.prefix,
-        engine->config.hostname,
+        instance->config.prefix,
+        (host == localhost) ? instance->config.hostname : host->hostname,
         chart_name,
         dimension_name,
         (host->tags) ? ";" : "",
@@ -181,4 +202,27 @@ int format_dimension_stored_graphite_plaintext(struct instance *instance, RRDDIM
         (unsigned long long)last_t);
 
     return 0;
+}
+
+/**
+ * Prepare HTTP header
+ *
+ * @param instance an instance data structure.
+ * @return Returns 0 on success, 1 on failure.
+ */
+void graphite_http_prepare_header(struct instance *instance)
+{
+    struct simple_connector_data *simple_connector_data = instance->connector_specific_data;
+
+    buffer_sprintf(
+        simple_connector_data->last_buffer->header,
+        "POST /api/put HTTP/1.1\r\n"
+        "Host: %s\r\n"
+        "Content-Type: application/graphite\r\n"
+        "Content-Length: %lu\r\n"
+        "\r\n",
+        instance->config.destination,
+        buffer_strlen(simple_connector_data->last_buffer->buffer));
+
+    return;
 }

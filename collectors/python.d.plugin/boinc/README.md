@@ -1,20 +1,19 @@
 <!--
----
 title: "BOINC monitoring with Netdata"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/collectors/python.d.plugin/boinc/README.md
----
+sidebar_label: "BOINC"
 -->
 
 # BOINC monitoring with Netdata
 
-Monitors task counts for the Berkely Open Infrastructure Networking Computing (BOINC) distributed computing client using the same RPC interface that the BOINC monitoring GUI does.
+Monitors task counts for the Berkeley Open Infrastructure Networking Computing (BOINC) distributed computing client using the same RPC interface that the BOINC monitoring GUI does.
 
 It provides charts tracking the total number of tasks and active tasks, as well as ones tracking each of the possible states for tasks.
 
 ## Configuration
 
-Edit the `python.d/boinc.conf` configuration file using `edit-config` from the your agent's [config
-directory](../../../docs/step-by-step/step-04.md#find-your-netdataconf-file), which is typically at `/etc/netdata`.
+Edit the `python.d/boinc.conf` configuration file using `edit-config` from the Netdata [config
+directory](/docs/configure/nodes.md), which is typically at `/etc/netdata`.
 
 ```bash
 cd /etc/netdata   # Replace this path with your Netdata config directory, if different

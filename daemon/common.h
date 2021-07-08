@@ -3,7 +3,7 @@
 #ifndef NETDATA_COMMON_H
 #define NETDATA_COMMON_H 1
 
-#include "../libnetdata/libnetdata.h"
+#include "libnetdata/libnetdata.h"
 
 // ----------------------------------------------------------------------------
 // shortcuts for the default netdata configuration
@@ -50,6 +50,8 @@
 
 // backends for archiving the metrics
 #include "backends/backends.h"
+// the new exporting engine for archiving the metrics
+#include "exporting/exporting_engine.h"
 
 // the netdata API
 #include "web/api/web_api_v1.h"
@@ -64,13 +66,19 @@
 #include "claim/claim.h"
 
 // netdata agent cloud link
-#include "aclk/agent_cloud_link.h"
+#include "aclk/aclk_api.h"
 
-// the netdata deamon
+// global GUID map functions
+
+// netdata agent spawn server
+#include "spawn/spawn.h"
+
+// the netdata daemon
 #include "daemon.h"
 #include "main.h"
 #include "signals.h"
 #include "commands.h"
+#include "analytics.h"
 
 // global netdata daemon variables
 extern char *netdata_configured_hostname;
@@ -81,12 +89,16 @@ extern char *netdata_configured_primary_plugins_dir;
 extern char *netdata_configured_web_dir;
 extern char *netdata_configured_cache_dir;
 extern char *netdata_configured_varlib_dir;
+extern char *netdata_configured_lock_dir;
 extern char *netdata_configured_home_dir;
 extern char *netdata_configured_host_prefix;
 extern char *netdata_configured_timezone;
+extern char *netdata_configured_abbrev_timezone;
+extern int32_t netdata_configured_utc_offset;
 extern int netdata_zero_metrics_enabled;
 extern int netdata_anonymous_statistics_enabled;
 
 extern int netdata_ready;
+extern int netdata_cloud_setting;
 
 #endif /* NETDATA_COMMON_H */

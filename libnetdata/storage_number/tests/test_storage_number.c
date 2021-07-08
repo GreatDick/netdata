@@ -5,7 +5,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-static void test_number_pinting(void **state)
+static void test_number_printing(void **state)
 {
     (void)state;
 
@@ -37,12 +37,15 @@ static void test_number_pinting(void **state)
 
     print_calculated_number(value, -9999.9999999);
     assert_string_equal(value, "-9999.9999999");
+
+    print_calculated_number(value, unpack_storage_number(pack_storage_number(16.777218L, SN_EXISTS)));
+    assert_string_equal(value, "16.77722");
 }
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_number_pinting)
+        cmocka_unit_test(test_number_printing)
     };
 
     return cmocka_run_group_tests_name("storage_number", tests, NULL, NULL);

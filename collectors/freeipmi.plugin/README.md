@@ -1,8 +1,6 @@
 <!--
----
 title: "freeipmi.plugin"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/collectors/freeipmi.plugin/README.md
----
 -->
 
 # freeipmi.plugin
@@ -27,7 +25,7 @@ The plugin creates (up to) 8 charts, based on the information collected from IPM
 
 1.  number of sensors by state
 2.  number of events in SEL
-3.  Temperatures CELCIUS
+3.  Temperatures CELSIUS
 4.  Temperatures FAHRENHEIT
 5.  Voltages
 6.  Currents
@@ -47,7 +45,7 @@ The plugin does a speed test when it starts, to find out the duration needed by 
 
 The plugin supports a few options. To see them, run:
 
-```sh
+```text
 # /usr/libexec/netdata/plugins.d/freeipmi.plugin -h
 
  netdata freeipmi.plugin 1.8.0-546-g72ce5d6b_rolling
@@ -73,6 +71,8 @@ The plugin supports a few options. To see them, run:
   username USER
   password PASS           connect to remote IPMI host
                           default: local IPMI processor
+
+  noauthcodecheck         don't check the authentication codes returned
 
   driver-type IPMIDRIVER
                           Specify the driver type to use instead of doing an auto selection. 
@@ -163,13 +163,8 @@ You will get verbose output on what the plugin does.
 
 ## kipmi0 CPU usage
 
-There have been reports that kipmi is showing increased CPU when the IPMI is queried.
-
-[IBM has given a few explanations](http://www-01.ibm.com/support/docview.wss?uid=nas7d580df3d15874988862575fa0050f604).
-
-Check also [this stackexchange post](http://unix.stackexchange.com/questions/74900/kipmi0-eating-up-to-99-8-cpu-on-centos-6-4).
-
-To lower the CPU consumption of the system you can issue this command:
+There have been reports that kipmi is showing increased CPU when the IPMI is queried. To lower the CPU consumption of
+the system you can issue this command:
 
 ```sh
 echo 10 > /sys/module/ipmi_si/parameters/kipmid_max_busy_us

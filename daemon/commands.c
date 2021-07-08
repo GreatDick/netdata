@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "common.h"
-#include "../database/engine/rrdenginelib.h"
+#include "database/engine/rrdenginelib.h"
 
 static uv_thread_t thread;
 static uv_loop_t* loop;
@@ -15,6 +15,7 @@ char cmd_prefix_by_status[] = {
         CMD_PREFIX_ERROR
 };
 
+static int command_server_initialized = 0;
 static int command_thread_error;
 static int command_thread_shutdown;
 static unsigned clients = 0;
@@ -42,6 +43,9 @@ static cmd_status_t cmd_exit_execute(char *args, char **message);
 static cmd_status_t cmd_fatal_execute(char *args, char **message);
 static cmd_status_t cmd_reload_claiming_state_execute(char *args, char **message);
 static cmd_status_t cmd_reload_labels_execute(char *args, char **message);
+static cmd_status_t cmd_read_config_execute(char *args, char **message);
+static cmd_status_t cmd_write_config_execute(char *args, char **message);
+static cmd_status_t cmd_ping_execute(char *args, char **message);
 
 static command_info_t command_info_array[] = {
         {"help", cmd_help_execute, CMD_TYPE_HIGH_PRIORITY},                  // show help menu
@@ -52,6 +56,9 @@ static command_info_t command_info_array[] = {
         {"fatal-agent", cmd_fatal_execute, CMD_TYPE_HIGH_PRIORITY},          // exit with fatal error
         {"reload-claiming-state", cmd_reload_claiming_state_execute, CMD_TYPE_ORTHOGONAL}, // reload claiming state
         {"reload-labels", cmd_reload_labels_execute, CMD_TYPE_ORTHOGONAL},   // reload the labels
+        {"read-config", cmd_read_config_execute, CMD_TYPE_CONCURRENT},
+        {"write-config", cmd_write_config_execute, CMD_TYPE_ORTHOGONAL},
+        {"ping", cmd_ping_execute, CMD_TYPE_ORTHOGONAL}
 };
 
 /* Mutexes for commands of type CMD_TYPE_ORTHOGONAL */
@@ -112,7 +119,9 @@ static cmd_status_t cmd_help_execute(char *args, char **message)
              "fatal-agent\n"
              "    Log the state and halt the netdata agent.\n"
              "reload-claiming-state\n"
-             "    Reload agent claiming state from disk.\n",
+             "    Reload agent claiming state from disk.\n"
+             "ping\n"
+             "    Return with 'pong' if agent is alive.\n",
              MAX_COMMAND_LENGTH - 1);
     return CMD_STATUS_SUCCESS;
 }
@@ -184,13 +193,16 @@ static cmd_status_t cmd_reload_claiming_state_execute(char *args, char **message
 {
     (void)args;
     (void)message;
-
-    info("The claiming feature is still in development and subject to change before the next release");
+#if defined(DISABLE_CLOUD) || !defined(ENABLE_ACLK)
+    info("The claiming feature has been explicitly disabled");
+    *message = strdupz("This agent cannot be claimed, it was built without support for Cloud");
     return CMD_STATUS_FAILURE;
-
+#endif
     error_log_limit_unlimited();
     info("COMMAND: Reloading Agent Claiming configuration.");
     load_claiming_state();
+    registry_update_cloud_base_url();
+    rrdpush_claimed_id(localhost);
     error_log_limit_reset();
     return CMD_STATUS_SUCCESS;
 }
@@ -204,17 +216,96 @@ static cmd_status_t cmd_reload_labels_execute(char *args, char **message)
     BUFFER *wb = buffer_create(10);
 
     rrdhost_rdlock(localhost);
-    netdata_rwlock_rdlock(&localhost->labels_rwlock);
-    struct label *l=localhost->labels;
+    netdata_rwlock_rdlock(&localhost->labels.labels_rwlock);
+    struct label *l = localhost->labels.head;
     while (l != NULL) {
         buffer_sprintf(wb,"Label [source id=%s]: \"%s\" -> \"%s\"\n", translate_label_source(l->label_source), l->key, l->value);
         l = l->next;
     }
-    netdata_rwlock_unlock(&localhost->labels_rwlock);
+    netdata_rwlock_unlock(&localhost->labels.labels_rwlock);
     rrdhost_unlock(localhost);
 
     (*message)=strdupz(buffer_tostring(wb));
     buffer_free(wb);
+
+    return CMD_STATUS_SUCCESS;
+}
+
+static cmd_status_t cmd_read_config_execute(char *args, char **message)
+{
+    size_t n = strlen(args);
+    char *separator = strchr(args,'|');
+    if (separator == NULL)
+        return CMD_STATUS_FAILURE;
+    char *separator2 = strchr(separator + 1,'|');
+    if (separator2 == NULL)
+        return CMD_STATUS_FAILURE;
+
+    char *temp = callocz(n + 1, 1);
+    strcpy(temp, args);
+    size_t offset = separator - args;
+    temp[offset] = 0;
+    size_t offset2 = separator2 - args;
+    temp[offset2] = 0;
+
+    const char *conf_file = temp; /* "cloud" is cloud.conf, otherwise netdata.conf */
+    struct config *tmp_config = strcmp(conf_file, "cloud") ? &netdata_config : &cloud_config;
+
+    char *value = appconfig_get(tmp_config, temp + offset + 1, temp + offset2 + 1, NULL);
+    if (value == NULL)
+    {
+        error("Cannot execute read-config conf_file=%s section=%s / key=%s because no value set", conf_file,
+              temp + offset + 1, temp + offset2 + 1);
+        freez(temp);
+        return CMD_STATUS_FAILURE;
+    }
+    else
+    {
+        (*message) = strdupz(value);
+        freez(temp);
+        return CMD_STATUS_SUCCESS;
+    }
+
+}
+
+static cmd_status_t cmd_write_config_execute(char *args, char **message)
+{
+    UNUSED(message);
+    info("write-config %s", args);
+    size_t n = strlen(args);
+    char *separator = strchr(args,'|');
+    if (separator == NULL)
+        return CMD_STATUS_FAILURE;
+    char *separator2 = strchr(separator + 1,'|');
+    if (separator2 == NULL)
+        return CMD_STATUS_FAILURE;
+    char *separator3 = strchr(separator2 + 1,'|');
+    if (separator3 == NULL)
+        return CMD_STATUS_FAILURE;
+    char *temp = callocz(n + 1, 1);
+    strcpy(temp, args);
+    size_t offset = separator - args;
+    temp[offset] = 0;
+    size_t offset2 = separator2 - args;
+    temp[offset2] = 0;
+    size_t offset3 = separator3 - args;
+    temp[offset3] = 0;
+
+    const char *conf_file = temp; /* "cloud" is cloud.conf, otherwise netdata.conf */
+    struct config *tmp_config = strcmp(conf_file, "cloud") ? &netdata_config : &cloud_config;
+
+    appconfig_set(tmp_config, temp + offset + 1, temp + offset2 + 1, temp + offset3 + 1);
+    info("write-config conf_file=%s section=%s key=%s value=%s",conf_file, temp + offset + 1, temp + offset2 + 1,
+         temp + offset3 + 1);
+    freez(temp);
+    return CMD_STATUS_SUCCESS;
+}
+
+static cmd_status_t cmd_ping_execute(char *args, char **message)
+{
+    (void)args;
+
+    *message = strdupz("pong");
 
     return CMD_STATUS_SUCCESS;
 }
@@ -358,9 +449,11 @@ static void schedule_command(uv_work_t *req)
     cmd_ctx->status = execute_command(cmd_ctx->idx, cmd_ctx->args, &cmd_ctx->message);
 }
 
+/* This will alter the state of the command_info_array.cmd_str
+*/
 static void parse_commands(struct command_context *cmd_ctx)
 {
-    char *message = NULL, *pos;
+    char *message = NULL, *pos, *lstrip, *rstrip;
     cmd_t i;
     cmd_status_t status;
 
@@ -370,12 +463,19 @@ static void parse_commands(struct command_context *cmd_ctx)
     for (pos = cmd_ctx->command_string ; isspace(*pos) && ('\0' != *pos) ; ++pos) {;}
     for (i = 0 ; i < CMD_TOTAL_COMMANDS ; ++i) {
         if (!strncmp(pos, command_info_array[i].cmd_str, strlen(command_info_array[i].cmd_str))) {
+            if (CMD_EXIT == i) {
+                /* musl C does not like libuv workqueues calling exit() */
+                execute_command(CMD_EXIT, NULL, NULL);
+            }
+            for (lstrip=pos + strlen(command_info_array[i].cmd_str); isspace(*lstrip) && ('\0' != *lstrip); ++lstrip) {;}
+            for (rstrip=lstrip+strlen(lstrip)-1; rstrip>lstrip && isspace(*rstrip); *(rstrip--) = 0 );
+
             cmd_ctx->work.data = cmd_ctx;
             cmd_ctx->idx = i;
-            cmd_ctx->args = pos + strlen(command_info_array[i].cmd_str);
+            cmd_ctx->args = lstrip;
             cmd_ctx->message = NULL;
 
-            assert(0 == uv_queue_work(loop, &cmd_ctx->work, schedule_command, after_schedule_command));
+            fatal_assert(0 == uv_queue_work(loop, &cmd_ctx->work, schedule_command, after_schedule_command));
             break;
         }
     }
@@ -434,7 +534,7 @@ static void connection_cb(uv_stream_t *server, int status)
     int ret;
     uv_pipe_t *client;
     struct command_context *cmd_ctx;
-    assert(status == 0);
+    fatal_assert(status == 0);
 
     /* combined allocation of client pipe and command context */
     cmd_ctx = mallocz(sizeof(*cmd_ctx));
@@ -496,7 +596,7 @@ static void command_thread(void *arg)
     }
     async.data = NULL;
 
-    ret = uv_pipe_init(loop, &server_pipe, 1);
+    ret = uv_pipe_init(loop, &server_pipe, 0);
     if (ret) {
         error("uv_pipe_init(): %s", uv_strerror(ret));
         command_thread_error = ret;
@@ -510,7 +610,13 @@ static void command_thread(void *arg)
         command_thread_error = ret;
         goto error_after_pipe_bind;
     }
-    if ((ret = uv_listen((uv_stream_t *)&server_pipe, SOMAXCONN, connection_cb))) {
+    ret = uv_listen((uv_stream_t *)&server_pipe, SOMAXCONN, connection_cb);
+    if (ret) {
+        /* Fallback to backlog of 1 */
+        info("uv_listen() failed with backlog = %d, falling back to backlog = 1.", SOMAXCONN);
+        ret = uv_listen((uv_stream_t *)&server_pipe, 1, connection_cb);
+    }
+    if (ret) {
         error("uv_listen(): %s", uv_strerror(ret));
         command_thread_error = ret;
         goto error_after_uv_listen;
@@ -531,7 +637,7 @@ static void command_thread(void *arg)
     uv_run(loop, UV_RUN_DEFAULT); /* flush all libuv handles */
 
     info("Shutting down command loop complete.");
-    assert(0 == uv_loop_close(loop));
+    fatal_assert(0 == uv_loop_close(loop));
     freez(loop);
 
     return;
@@ -543,7 +649,7 @@ error_after_pipe_init:
     uv_close((uv_handle_t *)&async, NULL);
 error_after_async_init:
     uv_run(loop, UV_RUN_DEFAULT); /* flush all libuv handles */
-    assert(0 == uv_loop_close(loop));
+    fatal_assert(0 == uv_loop_close(loop));
 error_after_loop_init:
     freez(loop);
 
@@ -563,11 +669,14 @@ void commands_init(void)
     int error;
 
     sanity_check();
+    if (command_server_initialized)
+        return;
+
     info("Initializing command server.");
     for (i = 0 ; i < CMD_TOTAL_COMMANDS ; ++i) {
-        uv_mutex_init(&command_lock_array[i]);
+        fatal_assert(0 == uv_mutex_init(&command_lock_array[i]));
     }
-    assert(0 == uv_rwlock_init(&exclusive_rwlock));
+    fatal_assert(0 == uv_rwlock_init(&exclusive_rwlock));
 
     init_completion(&completion);
     error = uv_thread_create(&thread, command_thread, NULL);
@@ -587,6 +696,8 @@ void commands_init(void)
         }
         goto after_error;
     }
+
+    command_server_initialized = 1;
     return;
 
 after_error:
@@ -597,15 +708,19 @@ void commands_exit(void)
 {
     cmd_t i;
 
+    if (!command_server_initialized)
+        return;
+
     command_thread_shutdown = 1;
     info("Shutting down command server.");
     /* wake up event loop */
-    assert(0 == uv_async_send(&async));
-    assert(0 == uv_thread_join(&thread));
+    fatal_assert(0 == uv_async_send(&async));
+    fatal_assert(0 == uv_thread_join(&thread));
 
     for (i = 0 ; i < CMD_TOTAL_COMMANDS ; ++i) {
         uv_mutex_destroy(&command_lock_array[i]);
     }
     uv_rwlock_destroy(&exclusive_rwlock);
     info("Command server has stopped.");
+    command_server_initialized = 0;
 }

@@ -1,8 +1,6 @@
 <!--
----
 title: "cgroups.plugin"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/collectors/cgroups.plugin/README.md
----
 -->
 
 # cgroups.plugin
@@ -105,7 +103,15 @@ For this mapping Netdata provides 2 configuration options:
 
 The whole point for the additional pattern list, is to limit the number of times the script will be called. Without this pattern list, the script might be called thousands of times, depending on the number of cgroups available in the system.
 
-The above pattern list is matched against the path of the cgroup. For matched cgroups, Netdata calls the script [cgroup-name.sh](cgroup-name.sh.in) to get its name. This script queries `docker`, or applies heuristics to find give a name for the cgroup.
+The above pattern list is matched against the path of the cgroup. For matched cgroups, Netdata calls the script [cgroup-name.sh](https://raw.githubusercontent.com/netdata/netdata/master/collectors/cgroups.plugin/cgroup-name.sh.in) to get its name. This script queries `docker`, `kubectl`, `podman`, or applies heuristics to find give a name for the cgroup.
+
+#### Note on Podman container names
+
+Podman's security model is a lot more restrictive than Docker's, so Netdata will not be able to detect container names out of the box unless they were started by the same user as Netdata itself.
+
+If Podman is used in "rootful" mode, it's also possible to use `podman system service` to grant Netdata access to container names. To do this, ensure `podman system service` is running and Netdata has access to `/run/podman/podman.sock` (the default permissions as specified by upstream are `0600`, with owner `root`, so you will have to adjust the configuration).
+
+[docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy) can also be used to give Netdata restricted access to the socket. Note that `PODMAN_HOST` in Netdata's environment should be set to the proxy's URL in this case.
 
 ### charts with zero metrics
 
@@ -139,7 +145,34 @@ Support per distribution:
 |Fedora 25|YES|[here](http://pastebin.com/ax0373wF)||
 |Debian 8|NO||can be enabled, see below|
 |AMI|NO|[here](http://pastebin.com/FrxmptjL)|not a systemd system|
-|Centos 7.3.1611|NO|[here](http://pastebin.com/SpzgezAg)|can be enabled, see below|
+|CentOS 7.3.1611|NO|[here](http://pastebin.com/SpzgezAg)|can be enabled, see below|
+
+### Monitored systemd service metrics
+
+- CPU utilization
+- Used memory
+- RSS memory
+- Mapped memory
+- Cache memory
+- Writeback memory
+- Memory minor page faults
+- Memory major page faults
+- Memory charging activity
+- Memory uncharging activity
+- Memory limit failures
+- Swap memory used
+- Disk read bandwidth
+- Disk write bandwidth
+- Disk read operations
+- Disk write operations
+- Throttle disk read bandwidth
+- Throttle disk write bandwidth
+- Throttle disk read operations
+- Throttle disk write operations
+- Queued disk read operations
+- Queued disk write operations
+- Merged disk read operations
+- Merged disk write operations
 
 ### how to enable cgroup accounting on systemd systems that is by default disabled
 
@@ -223,5 +256,32 @@ So, when a network interface or container stops, Netdata might log a few errors 
 5.  existing dashboard sessions will continue to see them, but of course they will not refresh
 6.  obsolete charts will be removed from memory, 1 hour after the last user viewed them (configurable with `[global].cleanup obsolete charts after seconds = 3600` (at `netdata.conf`).
 7.  when obsolete charts are removed from memory they are also deleted from disk (configurable with `[global].delete obsolete charts files = yes`)
+
+### Monitored container metrics
+
+- CPU usage
+- CPU usage within the limits
+- CPU usage per core
+- Memory usage
+- Writeback memory
+- Memory activity
+- Memory page faults
+- Used memory
+- Used RAM within the limits
+- Memory utilization
+- Memory limit failures
+- I/O bandwidth (all disks)
+- Serviced I/O operations (all disks)
+- Throttle I/O bandwidth (all disks)
+- Throttle serviced I/O operations (all disks)
+- Queued I/O operations (all disks)
+- Merged I/O operations (all disks)
+- CPU pressure
+- Memory pressure
+- Memory full pressure
+- I/O pressure
+- I/O full pressure
+  
+Network interfaces are monitored by means of the [proc plugin](/collectors/proc.plugin/README.md#monitored-network-interface-metrics).
 
 [![analytics](https://www.google-analytics.com/collect?v=1&aip=1&t=pageview&_s=1&ds=github&dr=https%3A%2F%2Fgithub.com%2Fnetdata%2Fnetdata&dl=https%3A%2F%2Fmy-netdata.io%2Fgithub%2Fcollectors%2Fcgroups.plugin%2FREADME&_u=MAC~&cid=5792dfd7-8dc4-476b-af31-da2fdb9f93d2&tid=UA-64295674-3)](<>)

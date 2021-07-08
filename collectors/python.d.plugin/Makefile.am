@@ -40,12 +40,15 @@ dist_pythonconfig_DATA = \
     $(NULL)
 
 include adaptec_raid/Makefile.inc
+include alarms/Makefile.inc
 include am2320/Makefile.inc
+include anomalies/Makefile.inc
 include apache/Makefile.inc
 include beanstalk/Makefile.inc
 include bind_rndc/Makefile.inc
 include boinc/Makefile.inc
 include ceph/Makefile.inc
+include changefinder/Makefile.inc
 include chrony/Makefile.inc
 include couchdb/Makefile.inc
 include dnsdist/Makefile.inc
@@ -107,6 +110,7 @@ include uwsgi/Makefile.inc
 include varnish/Makefile.inc
 include w1sensor/Makefile.inc
 include web_log/Makefile.inc
+include zscores/Makefile.inc
 
 pythonmodulesdir=$(pythondir)/python_modules
 dist_pythonmodules_DATA = \
@@ -141,6 +145,7 @@ dist_third_party_DATA = \
     python_modules/third_party/mcrcon.py \
     python_modules/third_party/boinc_client.py \
     python_modules/third_party/monotonic.py \
+    python_modules/third_party/filelock.py \
     $(NULL)
 
 pythonyaml2dir=$(pythonmodulesdir)/pyyaml2

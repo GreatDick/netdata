@@ -1,8 +1,6 @@
 <!--
----
 title: "Netdata badges"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/web/api/badges/README.md
----
 -->
 
 # Netdata badges
@@ -27,7 +25,7 @@ Similarly, there is [a chart that shows outbound bandwidth per class](http://lon
 
 The right one is a **volume** calculation. Netdata calculated the total of the last 86.400 seconds (a day) which gives `kilobits`, then divided it by 8 to make it KB, then by 1024 to make it MB and then by 1024 to make it GB. Calculations like this are quite accurate, since for every value collected, every second, Netdata interpolates it to second boundary using microsecond calculations.
 
-Let's see a few more badge examples (they come from the [Netdata registry](../../../registry/)):
+Let's see a few more badge examples (they come from the [Netdata registry](/registry/README.md)):
 
 -   **cpu usage of user `root`** (you can pick any user; 100% = 1 core). This will be `green <10%`, `yellow <20%`, `orange <50%`, `blue <100%` (1 core), `red` otherwise (you define thresholds and colors on the URL).
 
@@ -190,10 +188,10 @@ These are options dedicated to badges:
     The following parameters specify colors of each individual part of the badge. Each parameter is documented in detail
     below.
 
-    | Area of badge      | Backgroud color parameter | Text color parameter |
-    | ---:               | :-----------------------: | :------------------: |
-    | Label (left) part  | `label_color`             | `text_color_lbl`     |
-    | Value (right) part | `value_color`             | `text_color_val`     |
+    | Area of badge      | Background color parameter | Text color parameter |
+    | ---:               | :------------------------: | :------------------: |
+    | Label (left) part  | `label_color`              | `text_color_lbl`     |
+    | Value (right) part | `value_color`              | `text_color_val`     |
 
     -   `label_color=COLOR`
 
@@ -225,7 +223,7 @@ These are options dedicated to badges:
 
         The above will set `grey` if no value exists (not collected within the `gap when lost iterations above` in
         `netdata.conf` for the chart), `green` if the value is less than 10, `yellow` if the value is less than 100, and
-        so on. Netdata will use `red` if no other conditions match. Only integers are suported as values.
+        so on. Netdata will use `red` if no other conditions match. Only integers are supported as values.
 
         The supported operators are `<`, `>`, `<=`, `>=`, `=` (or `:`), and `!=` (or `<>`).
 
@@ -300,7 +298,7 @@ These are options dedicated to badges:
 </script>
 ```
 
-A more advanced badges refresh method is to include `http://your.netdata.ip:19999/refresh-badges.js` in your page. For more information and use example, [check this](../../gui/refresh-badges.js).
+A more advanced badges refresh method is to include `http://your.netdata.ip:19999/refresh-badges.js` in your page.
 
 ---
 

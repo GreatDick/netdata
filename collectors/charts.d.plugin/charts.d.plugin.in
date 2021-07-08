@@ -130,7 +130,7 @@ update_every=${minimum_update_frequency} # this will be overwritten by the comma
 charts_create="_create"
 charts_update="_update"
 charts_check="_check"
-charts_undescore="_"
+charts_underscore="_"
 
 # when making iterations, charts.d can loop more frequently
 # to prevent plugins missing iterations.
@@ -294,15 +294,7 @@ run() {
 	if [ "z${1}" = "z-t" -a "${2}" != "0" ]; then
 		t="${2}"
 		shift 2
-
-		case "$(getosid)" in
-		"alpine")
-			timeout -t ${t} "${@}" 2>"${TMP_DIR}/run.${pid}"
-			;;
-		*)
-			timeout ${t} "${@}" 2>"${TMP_DIR}/run.${pid}"
-			;;
-		esac
+		timeout "${t}" "${@}" 2>"${TMP_DIR}/run.${pid}"
 		ret=$?
 	else
 		"${@}" 2>"${TMP_DIR}/run.${pid}"
@@ -353,7 +345,7 @@ float2int() {
 	[ -z "${a}" ] && a="0"
 
 	# strip leading zeros from the integer part
-	# base 10 convertion
+	# base 10 conversion
 	a=$((10#$a))
 
 	# check the length of the decimal part
@@ -369,7 +361,7 @@ float2int() {
 	fi
 
 	# strip leading zeros from the decimal part
-	# base 10 convertion
+	# base 10 conversion
 	b=$((10#$b))
 
 	# store the result
@@ -475,9 +467,9 @@ all_enabled_charts() {
 		# check its config
 		#if [ -f "$userconfd/$chart.conf" ]
 		#then
-		#   if [ ! -z "$( cat "$userconfd/$chart.conf" | sed "s/^ \+//g" | grep -v "^$" | grep -v "^#" | grep -v "^$chart$charts_undescore" )" ]
+		#   if [ ! -z "$( cat "$userconfd/$chart.conf" | sed "s/^ \+//g" | grep -v "^$" | grep -v "^#" | grep -v "^$chart$charts_underscore" )" ]
 		#   then
-		#       error "module's $chart config $userconfd/$chart.conf should only have lines starting with $chart$charts_undescore . Disabling it."
+		#       error "module's $chart config $userconfd/$chart.conf should only have lines starting with $chart$charts_underscore . Disabling it."
 		#       continue
 		#   fi
 		#fi
@@ -612,6 +604,12 @@ debug "run_charts='$run_charts'"
 
 [ -z "$run_charts" ] && fatal "No charts to collect data from."
 
+keepalive() {
+  if [ ! -t 1 ] && ! printf "\n"; then
+    chartsd_cleanup
+  fi
+}
+
 declare -A charts_last_update=() charts_update_every=() charts_retries=() charts_next_update=() charts_run_counter=() charts_serial_failures=()
 global_update() {
 	local exit_at \
@@ -642,6 +640,8 @@ global_update() {
 
 	# the main loop
 	while [ "${#next_charts[@]}" -gt 0 ]; do
+	  keepalive
+
 		c=$((c + 1))
 		now_charts=("${next_charts[@]}")
 		next_charts=()

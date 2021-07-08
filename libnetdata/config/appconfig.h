@@ -82,19 +82,19 @@
 
 #define CONFIG_FILENAME "netdata.conf"
 
-#define CONFIG_SECTION_GLOBAL    "global"
-#define CONFIG_SECTION_WEB       "web"
-#define CONFIG_SECTION_STATSD    "statsd"
-#define CONFIG_SECTION_PLUGINS   "plugins"
-#define CONFIG_SECTION_CLOUD     "cloud"
-#define CONFIG_SECTION_REGISTRY  "registry"
-#define CONFIG_SECTION_HEALTH    "health"
-#define CONFIG_SECTION_BACKEND   "backend"
-#define CONFIG_SECTION_STREAM    "stream"
-#define CONFIG_SECTION_EXPORTING "exporting:global"
-#define CONFIG_SECTION_HOST_LABEL   "host labels"
-#define CONFIG_SECTION_ACLK        "agent_cloud_link"
-#define EXPORTING_CONF           "exporting.conf"
+#define CONFIG_SECTION_GLOBAL     "global"
+#define CONFIG_SECTION_WEB        "web"
+#define CONFIG_SECTION_STATSD     "statsd"
+#define CONFIG_SECTION_PLUGINS    "plugins"
+#define CONFIG_SECTION_CLOUD      "cloud"
+#define CONFIG_SECTION_REGISTRY   "registry"
+#define CONFIG_SECTION_HEALTH     "health"
+#define CONFIG_SECTION_BACKEND    "backend"
+#define CONFIG_SECTION_STREAM     "stream"
+#define CONFIG_SECTION_EXPORTING  "exporting:global"
+#define CONFIG_SECTION_PROMETHEUS "prometheus:exporter"
+#define CONFIG_SECTION_HOST_LABEL "host labels"
+#define EXPORTING_CONF            "exporting.conf"
 
 // these are used to limit the configuration names and values lengths
 // they are not enforced by config.c functions (they will strdup() all strings, no matter of their length)
@@ -111,7 +111,7 @@
 #define CONFIG_VALUE_CHECKED 0x08 // has been checked if the value is different from the default
 
 struct config_option {
-    avl avl;                // the index entry of this entry - this has to be first!
+    avl_t avl_node;         // the index entry of this entry - this has to be first!
 
     uint8_t flags;
     uint32_t hash;          // a simple hash to speed up searching
@@ -124,14 +124,14 @@ struct config_option {
 };
 
 struct section {
-    avl avl;                // the index entry of this section - this has to be first!
+    avl_t avl_node;         // the index entry of this section - this has to be first!
 
     uint32_t hash;          // a simple hash to speed up searching
                             // we first compare hashes, and only if the hashes are equal we do string comparisons
 
     char *name;
 
-    struct section *next;    // gloabl config_mutex protects just this
+    struct section *next;    // global config_mutex protects just this
 
     struct config_option *values;
     avl_tree_lock values_index;
@@ -141,7 +141,8 @@ struct section {
 };
 
 struct config {
-    struct section *sections;
+    struct section *first_section;
+    struct section *last_section; // optimize inserting at the end
     netdata_mutex_t mutex;
     avl_tree_lock index;
 };
@@ -159,9 +160,11 @@ extern int appconfig_load(struct config *root, char *filename, int overwrite_use
 extern void config_section_wrlock(struct section *co);
 extern void config_section_unlock(struct section *co);
 
+extern char *appconfig_get_by_section(struct section *co, const char *name, const char *default_value);
 extern char *appconfig_get(struct config *root, const char *section, const char *name, const char *default_value);
 extern long long appconfig_get_number(struct config *root, const char *section, const char *name, long long value);
 extern LONG_DOUBLE appconfig_get_float(struct config *root, const char *section, const char *name, LONG_DOUBLE value);
+extern int appconfig_get_boolean_by_section(struct section *co, const char *name, int value);
 extern int appconfig_get_boolean(struct config *root, const char *section, const char *name, int value);
 extern int appconfig_get_boolean_ondemand(struct config *root, const char *section, const char *name, int value);
 extern int appconfig_get_duration(struct config *root, const char *section, const char *name, const char *value);
@@ -178,6 +181,8 @@ extern int appconfig_move(struct config *root, const char *section_old, const ch
 extern void appconfig_generate(struct config *root, BUFFER *wb, int only_changed);
 
 extern int appconfig_section_compare(void *a, void *b);
+
+extern void appconfig_section_destroy_non_loaded(struct config *root, const char *section);
 
 extern int config_parse_duration(const char* string, int* result);
 

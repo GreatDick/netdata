@@ -1,104 +1,108 @@
 <!--
----
-title: "The standard web dashboard"
+title: "Local Agent dashboard"
+description: "The local Netdata Agent dashboard is the heart of health monitoring and performance troubleshooting, with hundreds of real-time charts."
 custom_edit_url: https://github.com/netdata/netdata/edit/master/web/gui/README.md
----
 -->
 
-# The standard web dashboard
+# Local Agent dashboard
 
-The standard web dashboard is the heart of Netdata's performance troubleshooting
-toolkit. You've probably seen it before:
+The local Netdata Agent dashboard is the heart of Netdata's performance troubleshooting toolkit. You've probably seen it
+before:
 
-![A GIF of the standard Netdata web
-dashboard](https://user-images.githubusercontent.com/2662304/48307727-9175c800-e55b-11e8-92d8-a581d60a4889.gif)
+![The Netdata dashboard in
+action](https://user-images.githubusercontent.com/1153921/101513938-fae28380-3939-11eb-9434-8ad86a39be62.gif)
 
-Learn more about how dashboards work and how they're populated using the
-`dashboards.js` file in our [web dashboards overview](../).
+Learn more about how dashboards work and how they're populated using the `dashboards.js` file in our [web dashboards
+overview](/web/README.md).
 
-By default, Netdata starts a web server for its dashboard at port `19999`. Open
-up your web browser of choice and navigate to `http://SERVER-IP:19999`, or
-`http://localhost:19999` on `localhost`.
+By default, Netdata starts a web server for its dashboard at port `19999`. Open up your web browser of choice and
+navigate to `http://NODE:19999`, replacing `NODE` with the IP address or hostname of your Agent. If you're unsure, try
+`http://localhost:19999` first.
 
-Netdata uses an [internal, static-threaded web server](../server/) to host the
-HTML, CSS, and JavaScript files that make up the standard dashboard. You don't
-have to configure anything to access it, although you can adjust [your
-settings](../server/#other-netdataconf-web-section-options) in the
-`netdata.conf` file, or run Netdata behind an Nginx proxy, and so on.
+Netdata uses an [internal, static-threaded web server](/web/server/README.md) to host the HTML, CSS, and JavaScript
+files that make up the local Agent dashboard. You don't have to configure anything to access it, although you can adjust
+[your settings](/web/server/README.md#other-netdataconf-web-section-options) in the `netdata.conf` file, or run Netdata
+behind an [Nginx proxy](https://learn.netdata.cloud/docs/agent/running-behind-nginx), and so on.
 
-## Navigating the standard dashboard
+## Navigating the local dashboard
 
-Beyond charts, the standard dashboard can be broken down into three key areas:
+Beyond charts, the local dashboard can be broken down into three key areas:
 
 1.  [**Sections**](#sections)
-2.  [**Menus/submenus**](#menus)
-3.  [**Nodes menu**](#nodes-menu)
+2.  [**Time & date picker**](#time--date-picker)
+3.  [**Metrics menus/submenus**](#metrics-menus)
+4.  [**Netdata Cloud menus: Spaces, War Rooms, and Visited nodes)**](#cloud-menus-spaces-war-rooms-and-visited-nodes)
 
-![Annotated screenshot of the
-dashboard](https://user-images.githubusercontent.com/1153921/62810777-ef681980-bab3-11e9-9310-ec7a0c9f4faa.png)
+![Annotated screenshot of the local Agent
+dashboard](https://user-images.githubusercontent.com/1153921/101509403-f7e59400-3935-11eb-9abd-cbecfa3ee49a.png)
 
 ### Sections
 
 Netdata is broken up into multiple **sections**, such as **System Overview**,
 **CPU**, **Disk**, and more. Inside each section you'll find a number of charts,
-broken down into [contexts](../#contexts) and
-[families](../#families).
+broken down into [contexts](/web/README.md#contexts) and
+[families](/web/README.md#families).
 
 An example of the **Memory** section on a Linux desktop system.
 
 ![Screenshot of the Memory section of the Netdata
-dashboard](https://user-images.githubusercontent.com/1153921/62811044-1410c100-bab5-11e9-91cc-414cf6c23985.png)
+dashboard](https://user-images.githubusercontent.com/1153921/101508423-e354cc00-3934-11eb-9b33-3ad57a5988b4.png)
 
-All sections and their associated charts appear on a single "page," so all you
-need to do to view different sections is scroll up and down the page. But it's
-usually quicker to use the [menus](#menus).
+All sections and their associated charts appear on a single page, so all you need to do to view different sections is
+scroll up and down. But it's usually quicker to use the [menus](#metrics-menus).
 
-### Menus
+### Time & date picker
 
-**Menus** appears on the right-hand side of the standard dashboard. Netdata
-generates a menu for each section, and menus link to the section they're
-associated with.
+The local dashboard features a time & date picker to help you visualize specific timeframes of historical metrics. The
+picker chooses an appropriate default to always show per-second granularity based on the width of your browser's
+viewport.
 
-![Screenshot of the
-menu](https://user-images.githubusercontent.com/1153921/62811361-38b96880-bab6-11e9-8d41-4d9b29778e86.png)
+![The time & date picker in the local Agent
+dashboard](https://user-images.githubusercontent.com/1153921/101507784-2c585080-3934-11eb-9d6e-eff30b8553e4.png)
 
-Most menu items will contain several **submenu** entries, which represent any
-[families](../#families) from that section. Netdata automatically
+Use the Quick Selector to show metrics from the last 5 minutes, 15 minutes, 30 minutes, 2 hours, 6 hours, or 12 hours.
+
+Beneath the Quick Selector is an input field and dropdown you use in combination to select a specific timeframe of
+minutes, hours, days, or months. Enter a number and choose the appropriate unit of time.
+
+Use the calendar to select multiple days. Click on a date to begin the timeframe selection, then an ending date. 
+
+Click **Apply** to re-render all visualizations with new metrics data, or **Clear** to restore the default timeframe.
+
+[Increase the metrics retention policy](/docs/store/change-metrics-storage.md) for your node to see more historical
+timeframes.
+
+### Metrics menus
+
+**Metrics menus** appears on the right-hand side of the local Agent dashboard. Netdata generates a menu for each
+section, and menus link to the section they're associated with.
+
+![A screenshot of metrics menus](https://user-images.githubusercontent.com/1153921/80834638-f08f2880-8ba5-11ea-99ae-f610b2885fd6.png)
+
+Most metrics menu items will contain several **submenu** entries, which represent any
+[families](/web/README.md#families) from that section. Netdata automatically
 generates these submenu entries.
 
 Here's a **Disks** menu with several submenu entries for each disk drive and
 partition Netdata recognizes.
 
-![Screenshot of some
-submenus](https://user-images.githubusercontent.com/1153921/62811428-70281500-bab6-11e9-9a61-ecd0a7aba453.png)
+![Screenshot of some metrics
+submenus](https://user-images.githubusercontent.com/1153921/80834697-11577e00-8ba6-11ea-979c-92fd19cdb480.png)
 
-### Nodes menu
+### Cloud menus (Spaces, War Rooms, and Visited nodes)
 
-The nodes menu appears in the top-left corner of the standard dashboard and is
-labeled with the hostname of the system Netdata is monitoring.
+The dashboard also features a menu related to Netdata Cloud functionality. You can view your existing Spaces or create
+new ones via the left vertical column of boxes. This menu also displays the name of your current Space, shows a list of
+any War Rooms you've added you your Space, and lists any notes you recently visited via their Agent dashboards. Click on
+a War Room's name to jump to the Netdata Cloud web interface.
 
-Clicking on it will display a drop-down menu of any nodes you might have
-connected via the [Netdata registry](../../registry/). By default, you'll find
-nothing under the **My nodes** heading, but you can try out any of the demo
-Netdata nodes to see how the nodes menu works.
+![A screenshot of the Cloud
+menus](https://user-images.githubusercontent.com/1153921/80837210-3f8b8c80-8bab-11ea-9c75-128c2d823ef8.png)
 
-![Screenshot of the default (empty) nodes
-menu](https://user-images.githubusercontent.com/1153921/62795508-c3d13900-ba8b-11e9-98ed-f0be1b201340.png)
+If you want to know more about how Cloud populates this menu, and the Agent-Cloud integration at a high level, see our
+document on [using the Agent with Netdata Cloud](/docs/agent-cloud.md).
 
-Once you add nodes via [Netdata Cloud](../../docs/netdata-cloud/) or a [private
-registry](../../registry/#run-your-own-registry), you will see them appear under
-the **My nodes** heading.
-
-![Screenshot of a nodes menu populated by registry
-agents](https://user-images.githubusercontent.com/1153921/62795509-c3d13900-ba8b-11e9-8459-e85bf71f7ceb.png)
-
-The nodes menu will also show the master netdata node and all slave nodes
-streaming to that master, if you have [configured streaming](../../streaming).
-
-![Screenshot of a nodes menu populated by streaming
-agents.](https://user-images.githubusercontent.com/1153921/62965774-90a7e600-bdba-11e9-8b80-495f35b29ecb.png)
-
-## Customizing the standard dashboard
+## Customizing the local dashboard
 
 Netdata stores information about individual charts in the `dashboard_info.js`
 file. This file includes section and subsection headings, descriptions, colors,
@@ -121,8 +125,7 @@ If you want to customize this information, you should avoid editing
 overwrite the file when it's updated. Instead, you should create a new file with
 your customizations.
 
-We created an example file at
-[`dashboard_info_custom_example.js`](dashboard_info_custom_example.js). You can
+We created an example file at `dashboard_info_custom_example.js`. You can
 copy this to a new file with a name of your choice in the `web/` directory. This
 directory changes based on your operating system and installation method. If
 you're on a Linux system, it should be at `/usr/share/netdata/web/`.
@@ -160,7 +163,7 @@ file](https://user-images.githubusercontent.com/1153921/62798924-570e6c80-ba94-1
 
 ## Custom dashboards
 
-For information on creating custom dashboards from scratch, see the [custom
-dashboards](custom/) or [Atlassian Confluence dashboards](confluence/) guides.
+For information on creating custom dashboards from scratch, see the [custom dashboards](/web/gui/custom/README.md) or
+[Atlassian Confluence dashboards](/web/gui/confluence/README.md) guides.
 
 [![analytics](https://www.google-analytics.com/collect?v=1&aip=1&t=pageview&_s=1&ds=github&dr=https%3A%2F%2Fgithub.com%2Fnetdata%2Fnetdata&dl=https%3A%2F%2Fmy-netdata.io%2Fgithub%2Fweb%2Fgui%2FREADME&_u=MAC~&cid=5792dfd7-8dc4-476b-af31-da2fdb9f93d2&tid=UA-64295674-3)]()

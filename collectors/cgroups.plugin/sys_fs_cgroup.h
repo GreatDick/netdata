@@ -3,7 +3,7 @@
 #ifndef NETDATA_SYS_FS_CGROUP_H
 #define NETDATA_SYS_FS_CGROUP_H 1
 
-#include "../../daemon/common.h"
+#include "daemon/common.h"
 
 #if (TARGET_OS == OS_LINUX)
 
@@ -27,5 +27,7 @@ extern void *cgroups_main(void *ptr);
 #define NETDATA_PLUGIN_HOOK_LINUX_CGROUPS
 
 #endif // (TARGET_OS == OS_LINUX)
+
+extern char *parse_k8s_data(struct label **labels, char *data);
 
 #endif //NETDATA_SYS_FS_CGROUP_H

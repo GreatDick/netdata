@@ -1,8 +1,7 @@
 <!--
----
 title: "PostgreSQL monitoring with Netdata"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/collectors/python.d.plugin/postgres/README.md
----
+sidebar_label: "PostgreSQL"
 -->
 
 # PostgreSQL monitoring with Netdata
@@ -11,7 +10,7 @@ Collects database health and performance metrics.
 
 ## Requirements
 
--   `python-psycopg2` package. You have to install it manually.
+-   `python-psycopg2` package. You have to install it manually and make sure that it is available to the `netdata` user, either using `pip`, the package manager of your Linux distribution, or any other method you prefer.
 
 Following charts are drawn:
 
@@ -23,7 +22,7 @@ Following charts are drawn:
 
     -   active
 
-3.  **Current Backend Processe Usage** percentage
+3.  **Current Backend Process Usage** percentage
 
     -   used
     -   available
@@ -69,10 +68,27 @@ Following charts are drawn:
 
     -   locks
 
+12. **Standby delta** KB
+
+    - sent delta
+    - write delta
+    - flush delta
+    - replay delta
+
+13. **Standby lag** seconds
+
+    - write lag
+    - flush lag
+    - replay lag
+
+14. **Average number of blocking transactions in db** processes
+
+    - blocking
+
 ## Configuration
 
-Edit the `python.d/postgres.conf` configuration file using `edit-config` from the your agent's [config
-directory](../../../docs/step-by-step/step-04.md#find-your-netdataconf-file), which is typically at `/etc/netdata`.
+Edit the `python.d/postgres.conf` configuration file using `edit-config` from the Netdata [config
+directory](/docs/configure/nodes.md), which is typically at `/etc/netdata`.
 
 ```bash
 cd /etc/netdata   # Replace this path with your Netdata config directory, if different
@@ -94,8 +110,6 @@ tcp:
   host         : 'localhost'
   port         : 5432
 ```
-
-For all available options please see module [configuration file](postgres.conf).
 
 ---
 

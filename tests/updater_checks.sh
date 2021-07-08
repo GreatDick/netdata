@@ -51,8 +51,8 @@ case "${running_os}" in
 	update-ca-certificates
 	;;
 "arch")
-	pacman -Sy
-	pacman --noconfirm --needed -S bash-bats curl
+	pacman --noconfirm -Syu
+	pacman --noconfirm --needed -S bash-bats curl libffi
 	;;
 "alpine")
 	apk update
@@ -63,7 +63,7 @@ case "${running_os}" in
 	;;
 esac
 
-# Run depednency scriptlet, before anything else
+# Run dependency scriptlet, before anything else
 #
 ./packaging/installer/install-required-packages.sh --non-interactive netdata
 

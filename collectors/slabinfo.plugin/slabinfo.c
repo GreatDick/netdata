@@ -51,6 +51,8 @@ char *netdata_configured_host_prefix = "";
 
 int running = 1;
 int debug = 0;
+size_t lines_discovered = 0;
+int redraw_chart = 0;
 
 // ----------------------------------------------------------------------------
 
@@ -126,7 +128,7 @@ static struct slabinfo *get_slabstruct(const char *name) {
         }
     }
 
-    // Search it from the begining to the last position we used
+    // Search it from the beginning to the last position we used
     for (s = slabinfo_root; s != slabinfo_last_used; s = s->next) {
         if (hash == s->hash && !strcmp(name, s->name)) {
             slabdebug("<-- Found existing slabstruct after root %s", slabinfo_root->name);
@@ -141,7 +143,7 @@ static struct slabinfo *get_slabstruct(const char *name) {
     s->name = strdupz(name);
     s->hash = hash;
 
-    // Add it to the current postion
+    // Add it to the current position
     if (slabinfo_root) {
         slabdebug("<-- Creating new slabstruct after %s", slabinfo_last_used->name);
         s->next = slabinfo_last_used->next;
@@ -163,12 +165,12 @@ struct slabinfo *read_file_slabinfo() {
     slabdebug("-> Reading procfile %s", PLUGIN_SLABINFO_PROCFILE);
 
     static procfile *ff = NULL;
-	static long slab_pagesize = 0;
+    static long slab_pagesize = 0;
 
-	if (unlikely(!slab_pagesize)) {
-		slab_pagesize = sysconf(_SC_PAGESIZE);
-		slabdebug("   Discovered pagesize: %ld", slab_pagesize);
-	}
+    if (unlikely(!slab_pagesize)) {
+        slab_pagesize = sysconf(_SC_PAGESIZE);
+        slabdebug("   Discovered pagesize: %ld", slab_pagesize);
+    }
 
     if(unlikely(!ff)) {
         ff = procfile_reopen(ff, PLUGIN_SLABINFO_PROCFILE, " ,:" , PROCFILE_FLAG_DEFAULT);
@@ -187,11 +189,15 @@ struct slabinfo *read_file_slabinfo() {
 
     // Iterate on all lines to populate / update the slabinfo struct
     size_t lines = procfile_lines(ff), l;
+    if (unlikely(lines != lines_discovered)) {
+        lines_discovered = lines;
+        redraw_chart = 1;
+    }
 
     slabdebug("   Read %lu lines from procfile", (unsigned long)lines);
     for(l = 2; l < lines; l++) {
         if (unlikely(procfile_linewords(ff, l) < 14)) {
-            slabdebug("    Line %lu has only %lu words, skipping", (unsigned long)l, procfile_linewords(ff,l));
+            slabdebug("    Line %zu has only %zu words, skipping", l, procfile_linewords(ff,l));
             continue;
         }
 
@@ -231,7 +237,7 @@ struct slabinfo *read_file_slabinfo() {
         else
             s->obj_filling = 0;
 
-        slabdebug("    Updated slab %s: %lu %lu %lu %lu %lu / %lu %lu %lu / %lu %lu %lu / %lu %lu %hhu",
+        slabdebug("    Updated slab %s: %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" / %"PRIu64" %"PRIu64" %"PRIu64" / %"PRIu64" %"PRIu64" %"PRIu64" / %"PRIu64" %"PRIu64" %hhu",
             name, s->active_objs, s->num_objs, s->obj_size, s->obj_per_slab, s->pages_per_slab,
             s->tune_limit, s->tune_batchcnt, s->tune_shared_factor,
             s->data_active_slabs, s->data_num_slabs, s->data_shared_avail,
@@ -254,7 +260,8 @@ unsigned int do_slab_stats(int update_every) {
         sactive = read_file_slabinfo();
 
         // Init Charts
-        if (unlikely(loops == 0)) {
+        if (unlikely(redraw_chart)) {
+            redraw_chart = 0;
             // Memory Usage
             printf("CHART %s.%s '' 'Memory Usage' 'B' '%s' '' line %d %d %s\n"
                 , CHART_TYPE
@@ -304,7 +311,7 @@ unsigned int do_slab_stats(int update_every) {
             , "slabmemory"
         );
         for (s = sactive; s; s = s->next) {
-            printf("SET %s = %lu\n"
+            printf("SET %s = %"PRIu64"\n"
                 , s->name
                 , s->mem_usage
             );
@@ -334,7 +341,7 @@ unsigned int do_slab_stats(int update_every) {
             , "slabwaste"
         );
         for (s = sactive; s; s = s->next) {
-            printf("SET %s = %lu\n"
+            printf("SET %s = %"PRIu64"\n"
                 , s->name
                 , s->mem_waste
             );

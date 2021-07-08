@@ -1,8 +1,6 @@
 <!--
----
 title: "Netdata distribution support matrix"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/packaging/DISTRIBUTIONS.md
----
 -->
 
 # Netdata distribution support matrix
@@ -21,7 +19,7 @@ have complete visibility over the range of support.
 -   **Family**: The family that the OS belongs to
 -   **CI: Smoke Testing**: Smoke testing has been implemented on our CI, to prevent broken code reaching our users
 -   **CI: Testing**: Testing has been implemented to prevent broken or problematic code reaching our users
--   **CD**: Continious deployment support has been fully enabled for this operating system
+-   **CD**: Continuous deployment support has been fully enabled for this operating system
 -   **.DEB**: We provide a `.DEB` package for that particular operating system
 -   **.RPM**: We provide a `.RPM` package for that particular operating system
 -   **Installer**: Running netdata from source, using our installer, is working for this operating system
@@ -125,7 +123,9 @@ This is the brand new database engine capability of netdata. It is a mandatory f
 
 #### Encryption Support (HTTPS)
 
-This is Netdata's TLS capability that incorporates encryption on the web server and the APIs between master and slaves. Also a mandatory facility for Netdata, but remains optional for users who are limited or not interested in tight security
+This is Netdata's TLS capability that incorporates encryption on the web server and the APIs between parent and child
+nodes. Also a mandatory facility for Netdata, but remains optional for users who are limited or not interested in tight
+security
 
 |make/make install|netdata-installer.sh|kickstart.sh|kickstart-static64.sh|Docker image|RPM packaging|DEB packaging|
 |:---------------:|:------------------:|:----------:|:-------------------:|:----------:|:-----------:|:-----------:|
@@ -248,7 +248,8 @@ This is Netdata's TLS capability that incorporates encryption on the web server 
 |:---------------:|:------------------:|:----------:|:-------------------:|:----------:|:-----------:|:-----------:|
 |Auto-detect|Auto-detect|Auto-detect|Auto-detect|NO|NO|NO|
 
--   **Flags/instructions to enable**: [Instructions for AWS Kinesis](https://docs.netdata.cloud/backends/aws_kinesis)
+-   **Flags/instructions to enable**: [Instructions for AWS
+    Kinesis](https://learn.netdata.cloud/docs/agent/backends/aws_kinesis)
 -   **Flags to disable from source**: --disable-backend-kinesis
 -   **What packages required for auto-detect?**: `AWS SDK for C++`, `libcurl`, `libssl`, `libcrypto`
 

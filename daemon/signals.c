@@ -44,7 +44,7 @@ static void signal_handler(int signo) {
 
             if(signals_waiting[i].action == NETDATA_SIGNAL_FATAL) {
                 char buffer[200 + 1];
-                snprintfz(buffer, 200, "\nSIGNAL HANLDER: received: %s. Oops! This is bad!\n", signals_waiting[i].name);
+                snprintfz(buffer, 200, "\nSIGNAL HANDLER: received: %s. Oops! This is bad!\n", signals_waiting[i].name);
                 if(write(STDERR_FILENO, buffer, strlen(buffer)) == -1) {
                     // nothing to do - we cannot write but there is no way to complain about it
                     ;
@@ -109,6 +109,21 @@ void signals_init(void) {
         if(sigaction(signals_waiting[i].signo, &sa, NULL) == -1)
             error("SIGNAL: Failed to change signal handler for: %s", signals_waiting[i].name);
     }
+}
+
+void signals_restore_SIGCHLD(void)
+{
+    struct sigaction sa;
+
+    if (reaper_enabled == 0)
+        return;
+
+    sa.sa_flags = 0;
+    sigfillset(&sa.sa_mask);
+    sa.sa_handler = signal_handler;
+
+    if(sigaction(SIGCHLD, &sa, NULL) == -1)
+        error("SIGNAL: Failed to change signal handler for: SIGCHLD");
 }
 
 void signals_reset(void) {

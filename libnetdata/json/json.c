@@ -82,7 +82,7 @@ jsmntok_t *json_tokenise(char *js, size_t len, size_t *count)
 /**
  * Callback Print
  *
- * Set callback print case necesary and wrinte an information inside a buffer to write in the log.
+ * Set callback print case necessary and wrinte an information inside a buffer to write in the log.
  *
  * @param e a pointer for a structure that has the complete information about json structure.
  *
@@ -137,10 +137,12 @@ int json_callback_print(JSON_ENTRY *e)
  * @param e the output structure
  */
 static inline void json_jsonc_set_string(JSON_ENTRY *e,char *key,const char *value) {
-    size_t length = strlen(key);
+    size_t len = strlen(key);
+    if(len > JSON_NAME_LEN)
+        len = JSON_NAME_LEN;
     e->type = JSON_STRING;
-    memcpy(e->name,key,length);
-    e->name[length] = 0x00;
+    memcpy(e->name,key,len);
+    e->name[len] = 0x00;
     e->data.string = (char *) value;
 }
 
@@ -157,6 +159,16 @@ static inline void json_jsonc_set_string(JSON_ENTRY *e,char *key,const char *val
 static inline void json_jsonc_set_boolean(JSON_ENTRY *e,int value) {
     e->type = JSON_BOOLEAN;
     e->data.boolean = value;
+}
+
+static inline void json_jsonc_set_integer(JSON_ENTRY *e, char *key, int64_t value) {
+    size_t len = strlen(key);
+    if(len > JSON_NAME_LEN)
+        len = JSON_NAME_LEN;
+    e->type = JSON_NUMBER;
+    memcpy(e->name, key, len);
+    e->name[len] = 0;
+    e->data.number = value;
 }
 
 /**
@@ -299,7 +311,7 @@ size_t json_walk_array(char *js, jsmntok_t *t, size_t nest, size_t start, JSON_E
     memcpy(&ne, e, sizeof(JSON_ENTRY));
     ne.type = JSON_ARRAY;
     ne.data.items = t[start].size;
-    ne.callback_function = NULL;
+    ne.callback_function = e->callback_function;
     ne.name[0]='\0';
     ne.fullname[0]='\0';
     if(e->callback_function) e->callback_function(&ne);
@@ -365,7 +377,7 @@ size_t json_walk_object(char *js, jsmntok_t *t, size_t nest, size_t start, JSON_
     ne.original_string = &js[t[start].start];
     memcpy(&ne, e, sizeof(JSON_ENTRY));
     ne.type = JSON_OBJECT;
-    ne.callback_function = NULL;
+    ne.callback_function = e->callback_function;
     if(e->callback_function) e->callback_function(&ne);
     js[t[start].end] = old;
 
@@ -447,6 +459,9 @@ size_t json_walk(json_object *t, void *callback_data, int (*callback_function)(s
         } else if (type == json_type_boolean) {
             json_jsonc_set_boolean(&e,json_object_get_boolean(val));
             callback_function(&e);
+        } else if (type == json_type_int) {
+            json_jsonc_set_integer(&e,key,json_object_get_int64(val));
+            callback_function(&e);
         }
     }
 
@@ -503,8 +518,8 @@ size_t json_walk_tree(char *js, jsmntok_t *t, void *callback_data, int (*callbac
  * @param callback_data additional data to be used together the callback function
  * @param callback_function function used to create a silencer.
  *
- * @return JSON_OK  case everything happend as expected, JSON_CANNOT_PARSE case there were errors in the
- * parsing procces and JSON_CANNOT_DOWNLOAD case the string given(js) is NULL.
+ * @return JSON_OK  case everything happened as expected, JSON_CANNOT_PARSE case there were errors in the
+ * parsing process and JSON_CANNOT_DOWNLOAD case the string given(js) is NULL.
  */
 int json_parse(char *js, void *callback_data, int (*callback_function)(JSON_ENTRY *))
 {

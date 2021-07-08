@@ -1,8 +1,6 @@
 <!--
----
 title: "Running Netdata behind Nginx"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/docs/Running-behind-nginx.md
----
 -->
 
 # Running Netdata behind Nginx
@@ -55,6 +53,8 @@ upstream backend {
 server {
     # nginx listens to this
     listen 80;
+    # uncomment the line if you want nginx to listen on IPv6 address
+    #listen [::]:80;
 
     # the virtual host name of this
     server_name netdata.example.com;
@@ -84,16 +84,18 @@ upstream netdata {
 }
 
 server {
-   listen 80;
+    listen 80;
+    # uncomment the line if you want nginx to listen on IPv6 address
+    #listen [::]:80;
 
-   # the virtual host name of this subfolder should be exposed
-   #server_name netdata.example.com;
+    # the virtual host name of this subfolder should be exposed
+    #server_name netdata.example.com;
 
-   location = /netdata {
+    location = /netdata {
         return 301 /netdata/;
-   }
+    }
 
-   location ~ /netdata/(?<ndpath>.*) {
+    location ~ /netdata/(?<ndpath>.*) {
         proxy_redirect off;
         proxy_set_header Host $host;
 
@@ -129,11 +131,13 @@ upstream backend-server2 {
 
 server {
     listen 80;
+    # uncomment the line if you want nginx to listen on IPv6 address
+    #listen [::]:80;
 
     # the virtual host name of this subfolder should be exposed
     #server_name netdata.example.com;
 
-    location ~ /netdata/(?<behost>.*)/(?<ndpath>.*) {
+    location ~ /netdata/(?<behost>.*?)/(?<ndpath>.*) {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Server $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -165,7 +169,9 @@ Using the above, you access Netdata on the backend servers, like this:
 
 ### Encrypt the communication between Nginx and Netdata
 
-In case Netdata's web server has been [configured to use TLS](../web/server/#enabling-tls-support), it is necessary to specify inside the Nginx configuration that the final destination is using TLS. To do this, please, append the following parameters in your `nginx.conf`
+In case Netdata's web server has been [configured to use TLS](/web/server/README.md#enabling-tls-support), it is
+necessary to specify inside the Nginx configuration that the final destination is using TLS. To do this, please, append
+the following parameters in your `nginx.conf`
 
 ```conf
 proxy_set_header X-Forwarded-Proto https;
@@ -238,7 +244,8 @@ If your Nginx server is not on localhost, you can set:
 
 *note: Netdata v1.9+ support `allow connections from`*
 
-`allow connections from` accepts [Netdata simple patterns](../libnetdata/simple_pattern/) to match against the connection IP address.
+`allow connections from` accepts [Netdata simple patterns](/libnetdata/simple_pattern/README.md) to match against the
+connection IP address.
 
 ## Prevent the double access.log
 

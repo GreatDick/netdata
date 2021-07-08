@@ -58,7 +58,7 @@ while [ "${1}" ]; do
 done
 
 if [ ! "${DO_NOT_TRACK:-0}" -eq 0 ] || [ -n "$DO_NOT_TRACK" ]; then
-  REINSTALL_OPTIONS="${REINSTALL_OPTIONS} --disable-telemtry"
+  REINSTALL_OPTIONS="${REINSTALL_OPTIONS} --disable-telemetry"
 fi
 
 deleted_stock_configs=0
@@ -127,25 +127,6 @@ if portable_add_group netdata; then
   fi
 else
   run_failed "I could not add group netdata, so no user netdata will be created as well. Netdata run as root:root"
-fi
-
-# -----------------------------------------------------------------------------
-progress "Check SSL certificates paths"
-
-if [ ! -f "/etc/ssl/certs/ca-certificates.crt" ]; then
-  if [ ! -f /opt/netdata/.curlrc ]; then
-    cacert=
-
-    # CentOS
-    [ -f "/etc/ssl/certs/ca-bundle.crt" ] && cacert="/etc/ssl/certs/ca-bundle.crt"
-
-    if [ -n "${cacert}" ]; then
-      echo "Creating /opt/netdata/.curlrc with cacert=${cacert}"
-      echo > /opt/netdata/.curlrc "cacert=${cacert}"
-    else
-      run_failed "Failed to find /etc/ssl/certs/ca-certificates.crt"
-    fi
-  fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -244,6 +225,24 @@ done
 if [ -f bin/fping ]; then
   run chown root:${NETDATA_GROUP} bin/fping
   run chmod 4750 bin/fping
+fi
+
+# -----------------------------------------------------------------------------
+
+echo "Configure TLS certificate paths"
+if [ ! -L /opt/netdata/etc/ssl ] && [ -d /opt/netdata/etc/ssl ] ; then
+  echo "Preserving existing user configuration for TLS"
+else
+  if [ -d /etc/pki/tls ] ; then
+    echo "Using /etc/pki/tls for TLS configuration and certificates"
+    ln -sf /etc/pki/tls /opt/netdata/etc/ssl
+  elif [ -d /etc/ssl ] ; then
+    echo "Using /etc/ssl for TLS configuration and certificates"
+    ln -sf /etc/ssl /opt/netdata/etc/ssl
+  else
+    echo "Using bundled TLS configuration and certificates"
+    ln -sf /opt/netdata/share/ssl /opt/netdata/etc/ssl
+  fi
 fi
 
 # -----------------------------------------------------------------------------

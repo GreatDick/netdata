@@ -7,6 +7,9 @@ gcs-credentials.json
 .project
 .pydevproject
 
+# local dev outputs
+dist/
+
 *.o
 *.a
 config.h.in
@@ -66,8 +69,9 @@ slabinfo.plugin
 cgroup-network
 !cgroup-network/
 
-ebpf_process.plugin
-!ebpf_process.plugin/
+ebpf.plugin
+collectors/ebpf.plugin/reset_netdata_trace.sh
+!ebpf.plugin/
 
 # protoc generated files
 *.pb.cc
@@ -97,6 +101,7 @@ TODO.txt
 
 web/gui/chart-info/
 web/gui/control.html
+web/gui/dashboard.js
 web/gui/datasource.css
 web/gui/gadget.xml
 web/gui/index_new.html
@@ -111,9 +116,14 @@ system/netdata-openrc
 system/netdata-init-d
 system/netdata.logrotate
 system/netdata.service
+system/netdata.service.*
+system/netdata-updater.service
+!system/netdata.service.in
+!system/netdata.service.*.in
 system/netdata.plist
 system/netdata-freebsd
 system/edit-config
+system/netdata.crontab
 
 daemon/anonymous-statistics.sh
 daemon/get-kubernetes-labels.sh
@@ -128,6 +138,7 @@ collectors/python.d.plugin/python.d.plugin
 collectors/fping.plugin/fping.plugin
 collectors/ioping.plugin/ioping.plugin
 collectors/go.d.plugin
+web/netdata-switch-dashboard.sh
 
 # installer generated files
 /netdata-uninstaller.sh
@@ -139,6 +150,8 @@ cmake-build-release/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
+.cmake
+compile_commands.json
 
 # jetbrains IDE
 .jetbrains*
@@ -155,6 +168,7 @@ diagrams/plantuml.jar
 # cppcheck
 cppcheck-build/
 
+# python virtual environment
 venv/
 
 # debugging / profiling
@@ -177,6 +191,7 @@ tests/acls/acl.sh
 tests/urls/request.sh
 tests/alarm_repetition/alarm.sh
 tests/template_dimension/template_dim.sh
+aclk/legacy/tests/install-fake-charts.d.sh
 
 # tests and temp files
 test-driver
@@ -198,3 +213,7 @@ netdata.cbp
 
 # External dependencies
 externaldeps/
+
+# vim sessions
+Session.vim
+Session.*.vim

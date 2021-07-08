@@ -10,6 +10,7 @@ SUBDIRS = \
     checks.plugin \
     cups.plugin \
     diskspace.plugin \
+    timex.plugin \
     fping.plugin \
     ioping.plugin \
     freebsd.plugin \
@@ -24,7 +25,7 @@ SUBDIRS = \
     python.d.plugin \
     slabinfo.plugin \
     statsd.plugin \
-    ebpf_process.plugin \
+    ebpf.plugin \
     tc.plugin \
     $(NULL)
 

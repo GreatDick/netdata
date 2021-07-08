@@ -1,13 +1,21 @@
 <!--
----
 title: "ProxySQL monitoring with Netdata"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/collectors/python.d.plugin/proxysql/README.md
----
+sidebar_label: "ProxySQL"
 -->
 
 # ProxySQL monitoring with Netdata
 
 Monitors database backend and frontend performance metrics.
+
+## Requirements
+
+-   python library [MySQLdb](https://github.com/PyMySQL/mysqlclient-python) (faster) or [PyMySQL](https://github.com/PyMySQL/PyMySQL) (slower)
+-   `netdata` local user to connect to the ProxySQL server.
+
+To create the `netdata` user, follow [the documentation](https://github.com/sysown/proxysql/wiki/Users-configuration#creating-a-new-user).
+
+## Charts
 
 It produces:
 
@@ -23,7 +31,7 @@ It produces:
     -   questions: total number of queries sent from frontends
     -   slow_queries: number of queries that ran for longer than the threshold in milliseconds defined in global variable `mysql-long_query_time`
 
-3.  **Overall Bandwith (backends)**
+3.  **Overall Bandwidth (backends)**
 
     -   in
     -   out
@@ -37,7 +45,7 @@ It produces:
         -   `4=OFFLINE_HARD`: when a server is put into OFFLINE_HARD mode, the existing connections are dropped, while new incoming connections aren't accepted either. This is equivalent to deleting the server from a hostgroup, or temporarily taking it out of the hostgroup for maintenance work
         -   `-1`: Unknown status
 
-5.  **Bandwith (backends)**
+5.  **Bandwidth (backends)**
 
     -   Backends
         -   in
@@ -74,8 +82,8 @@ It produces:
 
 ## Configuration
 
-Edit the `python.d/proxysql.conf` configuration file using `edit-config` from the your agent's [config
-directory](../../../docs/step-by-step/step-04.md#find-your-netdataconf-file), which is typically at `/etc/netdata`.
+Edit the `python.d/proxysql.conf` configuration file using `edit-config` from the Netdata [config
+directory](/docs/configure/nodes.md), which is typically at `/etc/netdata`.
 
 ```bash
 cd /etc/netdata   # Replace this path with your Netdata config directory, if different

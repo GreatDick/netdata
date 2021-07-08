@@ -1,11 +1,10 @@
 <!--
----
-title: "Go application monitoring with Netdata"
+title: "Go applications monitoring with Netdata"
 custom_edit_url: https://github.com/netdata/netdata/edit/master/collectors/python.d.plugin/go_expvar/README.md
----
+sidebar_label: "Go applications"
 -->
 
-# Go application monitoring with Netdata
+# Go applications monitoring with Netdata
 
 Monitors Go application that exposes its metrics with the use of `expvar` package from the Go standard library.  The package produces charts for Go runtime memory statistics and optionally any number of custom charts.
 
@@ -70,7 +69,7 @@ Sample output:
 ```json
 {
 "cmdline": ["./expvar-demo-binary"],
-"memstats": {"Alloc":630856,"TotalAlloc":630856,"Sys":3346432,"Lookups":27, <ommited for brevity>}
+"memstats": {"Alloc":630856,"TotalAlloc":630856,"Sys":3346432,"Lookups":27, <omitted for brevity>}
 }
 ```
 
@@ -116,9 +115,8 @@ the use of `netdata`s `go_expvar` module.
 
 ### Using Netdata go_expvar module
 
-The `go_expvar` module is disabled by default. To enable it, edit [`python.d.conf`](../python.d.conf)
-(to edit it on your system run `/etc/netdata/edit-config python.d.conf`), and change the `go_expvar`
-variable to `yes`:
+The `go_expvar` module is disabled by default. To enable it, edit `python.d.conf` (to edit it on your system run
+`/etc/netdata/edit-config python.d.conf`), and change the `go_expvar` variable to `yes`:
 
 ```
 # Enable / Disable python.d.plugin modules
@@ -134,10 +132,9 @@ go_expvar: yes
 ...
 ```
 
-Next, we need to edit the module configuration file (found at [`/etc/netdata/python.d/go_expvar.conf`](go_expvar.conf) by default)
-(to edit it on your system run `/etc/netdata/edit-config python.d/go_expvar.conf`).
-The module configuration consists of jobs, where each job can be used to monitor a separate Go application.
-Let's see a sample job configuration:
+Next, we need to edit the module configuration file (found at `/etc/netdata/python.d/go_expvar.conf` by default) (to
+edit it on your system run `/etc/netdata/edit-config python.d/go_expvar.conf`). The module configuration consists of
+jobs, where each job can be used to monitor a separate Go application. Let's see a sample job configuration:
 
 ```
 # /etc/netdata/python.d/go_expvar.conf
@@ -212,8 +209,8 @@ See [this issue](https://github.com/netdata/netdata/pull/1902#issuecomment-28449
 
 Please see these two links to the official Netdata documentation for more information about the values:
 
--   [External plugins - charts](../../plugins.d/#chart)
--   [Chart variables](../#global-variables-order-and-chart)
+-   [External plugins - charts](/collectors/plugins.d/README.md#chart)
+-   [Chart variables](/collectors/python.d.plugin/README.md#global-variables-order-and-chart)
 
 **Line definitions**
 
@@ -236,7 +233,7 @@ hidden: False
 ```
 
 Please see the following link for more information about the options and their default values:
-[External plugins - dimensions](../../plugins.d/#dimension)
+[External plugins - dimensions](/collectors/plugins.d/README.md#dimension)
 
 Apart from top-level expvars, this plugin can also parse expvars stored in a multi-level map;
 All dicts in the resulting JSON document are then flattened to one level.
@@ -255,10 +252,23 @@ In the above case, the exported variables will be available under `runtime.gorou
 `counters.cnt1` and `counters.cnt2` expvar_keys. If the flattening results in a key collision,
 the first defined key wins and all subsequent keys with the same name are ignored.
 
+## Enable the collector
+
+The `go_expvar` collector is disabled by default. To enable it, use `edit-config` from the Netdata [config
+directory](/docs/configure/nodes.md), which is typically at `/etc/netdata`, to edit the `python.d.conf` file.
+
+```bash
+cd /etc/netdata   # Replace this path with your Netdata config directory, if different
+sudo ./edit-config python.d.conf
+```
+
+Change the value of the `go_expvar` setting to `yes`. Save the file and restart the Netdata Agent with `sudo systemctl
+restart netdata`, or the appropriate method for your system, to finish enabling the `go_expvar` collector.
+
 ## Configuration
 
-Edit the `python.d/go_expvar.conf` configuration file using `edit-config` from the your agent's [config
-directory](../../../docs/step-by-step/step-04.md#find-your-netdataconf-file), which is typically at `/etc/netdata`.
+Edit the `python.d/go_expvar.conf` configuration file using `edit-config` from the Netdata [config
+directory](/docs/configure/nodes.md), which is typically at `/etc/netdata`.
 
 ```bash
 cd /etc/netdata   # Replace this path with your Netdata config directory, if different
