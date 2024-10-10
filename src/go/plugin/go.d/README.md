@@ -1,14 +1,3 @@
-<!--
-title: go.d.plugin
-description: "go.d.plugin is an external plugin for Netdata, responsible for running individual data collectors written in Go."
-custom_edit_url: "/src/go/plugin/go.d/README.md"
-sidebar_label: "go.d.plugin"
-learn_status: "Published"
-learn_topic_type: "Tasks"
-learn_rel_path: "Developers/External plugins/go.d.plugin"
-sidebar_position: 1
--->
-
 # go.d.plugin
 
 `go.d.plugin` is a [Netdata](https://github.com/netdata/netdata) external plugin. It is an **orchestrator** for data
@@ -58,6 +47,7 @@ see the appropriate collector readme.
 | [bind](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/bind)                             |           ISC Bind            |
 | [boinc](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/boinc)                           |             BOINC             |
 | [cassandra](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/cassandra)                   |           Cassandra           |
+| [ceph](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/ceph)                             |             Ceph              |
 | [chrony](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/chrony)                         |            Chrony             |
 | [clickhouse](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/clickhouse)                 |          ClickHouse           |
 | [cockroachdb](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/cockroachdb)               |          CockroachDB          |
@@ -110,10 +100,13 @@ see the appropriate collector readme.
 | [nginxvts](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/nginxvts)                     |           NGINX VTS           |
 | [nsd](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/nsd)                               |       NSD (NLnet Labs)        |
 | [ntpd](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/ntpd)                             |          NTP daemon           |
+| [nvidia_smi](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/nvidia_smi)                 |          Nvidia SMI           |
 | [nvme](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/nvme)                             |         NVMe devices          |
+| [openldap](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/openldap)                     |           OpenLDAP            |
 | [openvpn](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/openvpn)                       |            OpenVPN            |
 | [openvpn_status_log](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/openvpn_status_log) |            OpenVPN            |
 | [pgbouncer](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/pgbouncer)                   |           PgBouncer           |
+| [oracledb](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/oracledb)                     |           Oracle DB           |
 | [phpdaemon](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/phpdaemon)                   |           phpDaemon           |
 | [phpfpm](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/phpfpm)                         |            PHP-FPM            |
 | [pihole](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/modules/pihole)                         |            Pi-hole            |

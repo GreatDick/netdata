@@ -125,6 +125,8 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "CYGWIN" OR "${CMAKE_SYSTEM_NAME}" STREQU
         add_definitions(-D_GNU_SOURCE)
 
         if($ENV{CLION_IDE})
+                set(RUN_UNDER_CLION True)
+
                 # clion needs these to find the includes
                 if("${CMAKE_SYSTEM_NAME}" STREQUAL "MSYS" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
                         if("$ENV{MSYSTEM}" STREQUAL "MSYS")
@@ -158,7 +160,7 @@ option(ENABLE_DBENGINE "Enable dbengine metrics storage" True)
 option(ENABLE_PLUGIN_GO "Enable metric collectors written in Go" ${DEFAULT_FEATURE_STATE})
 option(ENABLE_PLUGIN_PYTHON "Enable metric collectors written in Python" ${DEFAULT_FEATURE_STATE})
 
-cmake_dependent_option(ENABLE_PLUGIN_APPS "Enable per-process resource usage monitoring" ${DEFAULT_FEATURE_STATE} "NOT OS_WINDOWS" False)
+cmake_dependent_option(ENABLE_PLUGIN_APPS "Enable per-process resource usage monitoring" ${DEFAULT_FEATURE_STATE} "OS_LINUX OR OS_FREEBSD OR OS_MACOS OR OS_WINDOWS" False)
 cmake_dependent_option(ENABLE_PLUGIN_CHARTS "Enable metric collectors written in Bash" ${DEFAULT_FEATURE_STATE} "NOT OS_WINDOWS" False)
 cmake_dependent_option(ENABLE_PLUGIN_CUPS "Enable CUPS monitoring" ${DEFAULT_FEATURE_STATE} "NOT OS_WINDOWS" False)
 
@@ -450,6 +452,15 @@ int main() {
         return 0;
 }
 " HAVE_BUILTIN_ATOMICS)
+
+check_cxx_source_compiles("
+#include <stdint.h>
+int main(void) {
+        uint64_t a;
+        __sync_add_and_fetch(&a, 1);
+        return 0;
+}
+" ARCH_SUPPORTS_64BIT_ATOMICS)
 
 check_c_source_compiles("
 void my_printf(char const *s, ...) __attribute__((format(gnu_printf, 1, 2)));
@@ -763,6 +774,10 @@ set(LIBNETDATA_FILES
         src/libnetdata/os/close_range.h
         src/libnetdata/os/setproctitle.c
         src/libnetdata/os/setproctitle.h
+        src/libnetdata/os/windows-perflib/perflib.c
+        src/libnetdata/os/windows-perflib/perflib.h
+        src/libnetdata/os/windows-perflib/perflib-names.c
+        src/libnetdata/os/windows-perflib/perflib-dump.c
         src/libnetdata/paths/paths.c
         src/libnetdata/paths/paths.h
         src/libnetdata/json/json-c-parser-inline.c
@@ -796,6 +811,17 @@ set(LIBNETDATA_FILES
         src/libnetdata/os/timestamps.h
         src/libnetdata/parsers/entries.c
         src/libnetdata/parsers/entries.h
+        src/libnetdata/sanitizers/chart_id_and_name.c
+        src/libnetdata/sanitizers/chart_id_and_name.h
+        src/libnetdata/sanitizers/utf8-sanitizer.c
+        src/libnetdata/sanitizers/utf8-sanitizer.h
+        src/libnetdata/sanitizers/sanitizers.h
+        src/libnetdata/sanitizers/sanitizers-labels.c
+        src/libnetdata/sanitizers/sanitizers-labels.h
+        src/libnetdata/sanitizers/sanitizers-functions.c
+        src/libnetdata/sanitizers/sanitizers-functions.h
+        src/libnetdata/sanitizers/sanitizers-pluginsd.c
+        src/libnetdata/sanitizers/sanitizers-pluginsd.h
 )
 
 if(ENABLE_PLUGIN_EBPF)
@@ -1125,29 +1151,29 @@ endif()
 
 set(INTERNAL_COLLECTORS_FILES
         src/collectors/common-contexts/common-contexts.h
-        src/collectors/common-contexts/disk.io.h
-        src/collectors/common-contexts/system.io.h
-        src/collectors/common-contexts/system.interrupts.h
-        src/collectors/common-contexts/system.processes.h
-        src/collectors/common-contexts/system.ram.h
-        src/collectors/common-contexts/mem.swap.h
-        src/collectors/common-contexts/mem.pgfaults.h
-        src/collectors/common-contexts/mem.available.h
+        src/collectors/common-contexts/disk-io.h
+        src/collectors/common-contexts/system-io.h
+        src/collectors/common-contexts/system-interrupts.h
+        src/collectors/common-contexts/system-processes.h
+        src/collectors/common-contexts/system-ram.h
+        src/collectors/common-contexts/mem-swap.h
+        src/collectors/common-contexts/mem-pgfaults.h
+        src/collectors/common-contexts/mem-available.h
 )
 
 set(PLUGINSD_PLUGIN_FILES
-        src/collectors/plugins.d/plugins_d.c
-        src/collectors/plugins.d/plugins_d.h
-        src/collectors/plugins.d/pluginsd_dyncfg.c
-        src/collectors/plugins.d/pluginsd_dyncfg.h
-        src/collectors/plugins.d/pluginsd_functions.c
-        src/collectors/plugins.d/pluginsd_functions.h
-        src/collectors/plugins.d/pluginsd_internals.c
-        src/collectors/plugins.d/pluginsd_internals.h
-        src/collectors/plugins.d/pluginsd_parser.c
-        src/collectors/plugins.d/pluginsd_parser.h
-        src/collectors/plugins.d/pluginsd_replication.c
-        src/collectors/plugins.d/pluginsd_replication.h
+        src/plugins.d/plugins_d.c
+        src/plugins.d/plugins_d.h
+        src/plugins.d/pluginsd_dyncfg.c
+        src/plugins.d/pluginsd_dyncfg.h
+        src/plugins.d/pluginsd_functions.c
+        src/plugins.d/pluginsd_functions.h
+        src/plugins.d/pluginsd_internals.c
+        src/plugins.d/pluginsd_internals.h
+        src/plugins.d/pluginsd_parser.c
+        src/plugins.d/pluginsd_parser.h
+        src/plugins.d/pluginsd_replication.c
+        src/plugins.d/pluginsd_replication.h
 )
 
 set(RRD_PLUGIN_FILES
@@ -1427,12 +1453,9 @@ set(WINDOWS_PLUGIN_FILES
         src/collectors/windows.plugin/GetSystemUptime.c
         src/collectors/windows.plugin/GetSystemRAM.c
         src/collectors/windows.plugin/GetSystemCPU.c
-        src/collectors/windows.plugin/perflib.c
-        src/collectors/windows.plugin/perflib.h
         src/collectors/windows.plugin/perflib-rrd.c
         src/collectors/windows.plugin/perflib-rrd.h
-        src/collectors/windows.plugin/perflib-names.c
-        src/collectors/windows.plugin/perflib-dump.c
+        src/collectors/windows.plugin/perflib-mssql.c
         src/collectors/windows.plugin/perflib-storage.c
         src/collectors/windows.plugin/perflib-processor.c
         src/collectors/windows.plugin/perflib-thermalzone.c
@@ -1440,6 +1463,7 @@ set(WINDOWS_PLUGIN_FILES
         src/collectors/windows.plugin/perflib-network.c
         src/collectors/windows.plugin/perflib-memory.c
         src/collectors/windows.plugin/perflib-processes.c
+        src/collectors/windows.plugin/perflib-web-service.c
 )
 
 set(PROC_PLUGIN_FILES
@@ -1555,8 +1579,6 @@ endif()
 set(MQTT_WEBSOCKETS_FILES
         src/aclk/mqtt_websockets/mqtt_wss_client.c
         src/aclk/mqtt_websockets/mqtt_wss_client.h
-        src/aclk/mqtt_websockets/mqtt_wss_log.c
-        src/aclk/mqtt_websockets/mqtt_wss_log.h
         src/aclk/mqtt_websockets/ws_client.c
         src/aclk/mqtt_websockets/ws_client.h
         src/aclk/mqtt_websockets/mqtt_ng.c
@@ -1666,6 +1688,8 @@ if(ENABLE_H2O)
 
         target_compile_options(h2o PUBLIC -DH2O_USE_LIBUV=0)
         target_link_libraries(h2o PRIVATE PkgConfig::TLS)
+        target_compile_definitions(h2o PRIVATE
+                "$<$<NOT:$<BOOL:${ARCH_SUPPORTS_64BIT_ATOMICS}>>:H2O_NO_64BIT_ATOMICS>")
 endif()
 
 #
@@ -1721,7 +1745,7 @@ target_include_directories(libnetdata BEFORE PUBLIC ${CONFIG_H_DIR} ${CMAKE_SOUR
 target_link_libraries(libnetdata PUBLIC
         "$<$<NOT:$<BOOL:${HAVE_BUILTIN_ATOMICS}>>:atomic>"
         "$<$<OR:$<BOOL:${OS_LINUX}>,$<BOOL:${OS_FREEBSD}>>:pthread;rt>"
-        "$<$<BOOL:${OS_WINDOWS}>:kernel32;advapi32;winmm;rpcrt4>"
+        "$<$<BOOL:${OS_WINDOWS}>:kernel32;advapi32;winmm;rpcrt4;bcrypt>"
         "$<$<BOOL:${LINK_LIBM}>:m>"
         "${SYSTEMD_LDFLAGS}")
 
@@ -1885,19 +1909,24 @@ if(ENABLE_PLUGIN_APPS)
             src/collectors/apps.plugin/apps_targets.c
             src/collectors/apps.plugin/apps_users_and_groups.c
             src/collectors/apps.plugin/apps_output.c
-            src/collectors/apps.plugin/apps_proc_pid_status.c
-            src/collectors/apps.plugin/apps_proc_pid_limits.c
-            src/collectors/apps.plugin/apps_proc_pid_stat.c
-            src/collectors/apps.plugin/apps_proc_pid_cmdline.c
-            src/collectors/apps.plugin/apps_proc_pid_io.c
-            src/collectors/apps.plugin/apps_proc_stat.c
-            src/collectors/apps.plugin/apps_proc_pid_fd.c
-            src/collectors/apps.plugin/apps_proc_pids.c
-            src/collectors/apps.plugin/apps_proc_meminfo.c
+            src/collectors/apps.plugin/apps_pid_files.c
+            src/collectors/apps.plugin/apps_pid.c
+            src/collectors/apps.plugin/apps_aggregations.c
+            src/collectors/apps.plugin/apps_os_linux.c
+            src/collectors/apps.plugin/apps_os_freebsd.c
+            src/collectors/apps.plugin/apps_os_macos.c
+            src/collectors/apps.plugin/apps_os_windows.c
+            src/collectors/apps.plugin/apps_incremental_collection.c
+            src/collectors/apps.plugin/apps_os_windows_nt.c
+            src/collectors/apps.plugin/apps_pid_match.c
     )
 
     add_executable(apps.plugin ${APPS_PLUGIN_FILES})
-    target_link_libraries(apps.plugin libnetdata ${CAP_LIBRARIES})
+
+    target_link_libraries(apps.plugin libnetdata ${CAP_LIBRARIES}
+            "$<$<BOOL:${OS_WINDOWS}>:Version>"
+            "$<$<BOOL:${OS_WINDOWS}>:ntdll>")
+
     target_include_directories(apps.plugin PRIVATE ${CAP_INCLUDE_DIRS})
     target_compile_options(apps.plugin PRIVATE ${CAP_CFLAGS_OTHER})
 
@@ -2070,7 +2099,7 @@ if(ENABLE_PLUGIN_CUPS)
 endif()
 
 if(NEED_NDSUDO)
-    set(NDSUDO_FILES src/collectors/plugins.d/ndsudo.c)
+    set(NDSUDO_FILES src/collectors/utils/ndsudo.c)
 
     add_executable(ndsudo ${NDSUDO_FILES})
 
@@ -2214,7 +2243,7 @@ endif()
 
 if(ENABLE_PLUGIN_LOCAL_LISTENERS)
         set(LOCAL_LISTENERS_FILES
-                src/collectors/plugins.d/local_listeners.c
+                src/collectors/utils/local_listeners.c
                 src/libnetdata/maps/local-sockets.h
         )
 
@@ -2328,7 +2357,7 @@ add_executable(netdata
 
 if(OS_WINDOWS)
         add_executable(NetdataClaim ${CLAIM_WINDOWS_FILES} ${NETDATA_CLAIM_RES_FILES})
-        target_link_libraries(NetdataClaim shell32;gdi32;msftedit)
+        target_link_libraries(NetdataClaim shell32 gdi32 msftedit)
         target_compile_options(NetdataClaim PUBLIC -mwindows)
 endif()
 
@@ -2372,7 +2401,10 @@ set(SYSTEMD_CAT_NATIVE_FILES src/libnetdata/log/systemd-cat-native.c
                              src/libnetdata/log/systemd-cat-native.h)
 
 add_executable(systemd-cat-native ${SYSTEMD_CAT_NATIVE_FILES})
-target_link_libraries(systemd-cat-native libnetdata)
+target_link_libraries(systemd-cat-native
+        libnetdata
+        "$<$<BOOL:${CURL_FOUND}>:PkgConfig::CURL>"
+)
 
 install(TARGETS systemd-cat-native
         COMPONENT netdata
@@ -2937,11 +2969,8 @@ if(ENABLE_PLUGIN_PYTHON)
 
   install(FILES
           src/collectors/python.d.plugin/am2320/am2320.conf
-          src/collectors/python.d.plugin/ceph/ceph.conf
           src/collectors/python.d.plugin/go_expvar/go_expvar.conf
           src/collectors/python.d.plugin/haproxy/haproxy.conf
-          src/collectors/python.d.plugin/openldap/openldap.conf
-          src/collectors/python.d.plugin/oracledb/oracledb.conf
           src/collectors/python.d.plugin/pandas/pandas.conf
           src/collectors/python.d.plugin/spigotmc/spigotmc.conf
           src/collectors/python.d.plugin/traefik/traefik.conf
@@ -2951,11 +2980,8 @@ if(ENABLE_PLUGIN_PYTHON)
 
   install(FILES
           src/collectors/python.d.plugin/am2320/am2320.chart.py
-          src/collectors/python.d.plugin/ceph/ceph.chart.py
           src/collectors/python.d.plugin/go_expvar/go_expvar.chart.py
           src/collectors/python.d.plugin/haproxy/haproxy.chart.py
-          src/collectors/python.d.plugin/openldap/openldap.chart.py
-          src/collectors/python.d.plugin/oracledb/oracledb.chart.py
           src/collectors/python.d.plugin/pandas/pandas.chart.py
           src/collectors/python.d.plugin/spigotmc/spigotmc.chart.py
           src/collectors/python.d.plugin/traefik/traefik.chart.py
@@ -3083,6 +3109,10 @@ if(NOT OS_WINDOWS)
 endif()
 
 if(OS_WINDOWS)
+        install(FILES /usr/bin/msys-protobuf-32.dll
+                      /usr/bin/msys-uv-1.dll
+                      DESTINATION "${BINDIR}")
+
         # Make bash & netdata happy
         install(DIRECTORY DESTINATION tmp)
 

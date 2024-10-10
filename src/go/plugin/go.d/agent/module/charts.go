@@ -78,7 +78,7 @@ type (
 	}
 
 	// Chart represents a chart.
-	// For the full description please visit https://docs.netdata.cloud/collectors/plugins.d/#chart
+	// For the full description please visit https://docs.netdata.cloud/plugins.d/#chart
 	Chart struct {
 		// typeID is the unique identification of the chart, if not specified,
 		// the orchestrator will use job full name + chart ID as typeID (default behaviour).
@@ -128,7 +128,7 @@ type (
 	}
 
 	// Dim represents a chart dimension.
-	// For detailed description please visit https://docs.netdata.cloud/collectors/plugins.d/#dimension.
+	// For detailed description please visit https://docs.netdata.cloud/plugins.d/#dimension.
 	Dim struct {
 		ID   string
 		Name string
@@ -141,7 +141,7 @@ type (
 	}
 
 	// Var represents a chart variable.
-	// For detailed description please visit https://docs.netdata.cloud/collectors/plugins.d/#variable
+	// For detailed description please visit https://docs.netdata.cloud/plugins.d/#variable
 	Var struct {
 		ID    string
 		Name  string
@@ -468,12 +468,16 @@ func TestMetricsHasAllChartsDims(t *testing.T, charts *Charts, mx map[string]int
 	TestMetricsHasAllChartsDimsSkip(t, charts, mx, nil)
 }
 
-func TestMetricsHasAllChartsDimsSkip(t *testing.T, charts *Charts, mx map[string]int64, skip func(chart *Chart) bool) {
+func TestMetricsHasAllChartsDimsSkip(t *testing.T, charts *Charts, mx map[string]int64, skip func(chart *Chart, dim *Dim) bool) {
 	for _, chart := range *charts {
-		if chart.Obsolete || (skip != nil && skip(chart)) {
+		if chart.Obsolete {
 			continue
 		}
 		for _, dim := range chart.Dims {
+			if skip != nil && skip(chart, dim) {
+				continue
+			}
+
 			_, ok := mx[dim.ID]
 			assert.Truef(t, ok, "missing data for dimension '%s' in chart '%s'", dim.ID, chart.ID)
 		}

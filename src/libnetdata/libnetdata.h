@@ -327,9 +327,6 @@ typedef uint32_t uid_t;
 #include "storage-point.h"
 #include "paths/paths.h"
 
-void netdata_fix_chart_id(char *s);
-void netdata_fix_chart_name(char *s);
-
 int madvise_sequential(void *mem, size_t len);
 int madvise_random(void *mem, size_t len);
 int madvise_dontfork(void *mem, size_t len);
@@ -475,6 +472,8 @@ extern const char *netdata_configured_host_prefix;
 #include "string/string.h"
 #include "dictionary/dictionary.h"
 #include "dictionary/thread-cache.h"
+#include "sanitizers/sanitizers.h"
+
 #if defined(HAVE_LIBBPF) && !defined(__cplusplus)
 #include "ebpf/ebpf.h"
 #endif
@@ -642,7 +641,8 @@ extern bool unittest_running;
 bool rrdr_relative_window_to_absolute(time_t *after, time_t *before, time_t now);
 bool rrdr_relative_window_to_absolute_query(time_t *after, time_t *before, time_t *now_ptr, bool unittest);
 
-int netdata_base64_decode(const char *encoded, char *decoded, size_t decoded_size);
+int netdata_base64_decode(unsigned char *out, const unsigned char *in, int in_len);
+int netdata_base64_encode(unsigned char *encoded, const unsigned char *input, size_t input_size);
 
 static inline void freez_charp(char **p) {
     freez(*p);
