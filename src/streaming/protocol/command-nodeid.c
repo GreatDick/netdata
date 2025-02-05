@@ -12,7 +12,7 @@ void stream_sender_clear_parent_claim_id(RRDHOST *host) {
 
 // the parent sends to the child its claim id, node id and cloud url
 void stream_receiver_send_node_and_claim_id_to_child(RRDHOST *host) {
-    if(host == localhost || UUIDiszero(host->node_id)) return;
+    if(rrdhost_is_local(host) || UUIDiszero(host->node_id)) return;
 
     rrdhost_receiver_lock(host);
     if(stream_has_capability(host->receiver, STREAM_CAP_NODE_ID)) {
@@ -40,10 +40,7 @@ void stream_receiver_send_node_and_claim_id_to_child(RRDHOST *host) {
 }
 
 // the sender of the child receives node id, claim id and cloud url from the receiver of the parent
-void stream_sender_get_node_and_claim_id_from_parent(struct sender_state *s) {
-    char *claim_id_str = get_word(s->rbuf.line.words, s->rbuf.line.num_words, 1);
-    char *node_id_str = get_word(s->rbuf.line.words, s->rbuf.line.num_words, 2);
-    char *url = get_word(s->rbuf.line.words, s->rbuf.line.num_words, 3);
+void stream_sender_get_node_and_claim_id_from_parent(struct sender_state *s, const char *claim_id_str, const char *node_id_str, const char *url) {
 
     bool claimed = is_agent_claimed();
     bool update_node_id = false;

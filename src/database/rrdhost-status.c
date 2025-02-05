@@ -101,8 +101,8 @@ RRDHOST_INGEST_STATUS rrdhost_ingestion_status(RRDHOST *host) {
 }
 
 int16_t rrdhost_ingestion_hops(RRDHOST *host) {
-    if(rrdhost_is_local(host)) return 0;
-    if(!host->system_info) return 1;
+    if(host == localhost) return 0;
+    if(rrdhost_option_check(host, RRDHOST_OPTION_VIRTUAL_HOST) || !host->system_info) return 1;
     return rrdhost_system_info_hops(host->system_info);
 }
 
@@ -258,7 +258,7 @@ static void rrdhost_status_stream_internal(RRDHOST_STATUS *s) {
             else
                 s->stream.status = RRDHOST_STREAM_STATUS_ONLINE;
 
-            s->stream.compression = host->sender->compressor.initialized;
+            s->stream.compression = host->sender->thread.compressor.initialized;
         }
         else {
             s->stream.status = RRDHOST_STREAM_STATUS_OFFLINE;

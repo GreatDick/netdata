@@ -2,7 +2,7 @@
 
 #include "rrddim-collection.h"
 
-void store_metric_collection_completed() {
+ALWAYS_INLINE void store_metric_collection_completed() {
     pulse_queries_rrdset_collection_completed(rrdset_done_statistics_points_stored_per_tier);
 }
 
@@ -11,7 +11,7 @@ static inline time_t tier_next_point_time_s(RRDDIM *rd, struct rrddim_tier *t, t
     return now_s + loop - ((now_s + loop) % loop);
 }
 
-void store_metric_at_tier(RRDDIM *rd, size_t tier, struct rrddim_tier *t, STORAGE_POINT sp, usec_t now_ut __maybe_unused) {
+ALWAYS_INLINE_HOT void store_metric_at_tier(RRDDIM *rd, size_t tier, struct rrddim_tier *t, STORAGE_POINT sp, usec_t now_ut __maybe_unused) {
     if (unlikely(!t->next_point_end_time_s))
         t->next_point_end_time_s = tier_next_point_time_s(rd, t, sp.end_time_s);
 

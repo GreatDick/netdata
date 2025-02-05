@@ -115,8 +115,7 @@ extern const char *netdata_configured_host_prefix;
 #include "datetime/rfc7231.h"
 #include "sanitizers/sanitizers.h"
 
-#include "config/dyncfg.h"
-#include "config/appconfig.h"
+#include "config/config.h"
 #include "spawn_server/spawn_server.h"
 #include "spawn_server/spawn_popen.h"
 #include "procfile/procfile.h"
@@ -125,9 +124,6 @@ extern const char *netdata_configured_host_prefix;
 
 #include "log/systemd-journal-helpers.h"
 
-#if defined(HAVE_LIBBPF) && !defined(__cplusplus)
-#include "ebpf/ebpf.h"
-#endif
 #include "eval/eval.h"
 #include "statistical/statistical.h"
 #include "adaptive_resortable_list/adaptive_resortable_list.h"
@@ -145,7 +141,7 @@ extern const char *netdata_configured_host_prefix;
 #include "functions_evloop/functions_evloop.h"
 #include "query_progress/progress.h"
 
-static inline PPvoid_t JudyLFirstThenNext(Pcvoid_t PArray, Word_t * PIndex, bool *first) {
+static ALWAYS_INLINE PPvoid_t JudyLFirstThenNext(Pcvoid_t PArray, Word_t * PIndex, bool *first) {
     if(unlikely(*first)) {
         *first = false;
         return JudyLFirst(PArray, PIndex, PJE0);
@@ -154,7 +150,7 @@ static inline PPvoid_t JudyLFirstThenNext(Pcvoid_t PArray, Word_t * PIndex, bool
     return JudyLNext(PArray, PIndex, PJE0);
 }
 
-static inline PPvoid_t JudyLLastThenPrev(Pcvoid_t PArray, Word_t * PIndex, bool *first) {
+static ALWAYS_INLINE PPvoid_t JudyLLastThenPrev(Pcvoid_t PArray, Word_t * PIndex, bool *first) {
     if(unlikely(*first)) {
         *first = false;
         return JudyLLast(PArray, PIndex, PJE0);
