@@ -1501,6 +1501,11 @@ set(INTERNAL_COLLECTORS_FILES
         src/collectors/common-contexts/mem-available.h
 )
 
+set(INTERCOMMUNICATION_COLLECTORS_FILES
+        src/collectors/collectors-ipc/ebpf-ipc.c
+        src/collectors/collectors-ipc/ebpf-ipc.h
+        )
+
 set(PLUGINSD_PLUGIN_FILES
         src/plugins.d/plugins_d.c
         src/plugins.d/plugins_d.h
@@ -1861,6 +1866,7 @@ set(WINDOWS_PLUGIN_FILES
         src/collectors/windows.plugin/GetSystemRAM.c
         src/collectors/windows.plugin/GetSystemCPU.c
         src/collectors/windows.plugin/perflib-adcs.c
+        src/collectors/windows.plugin/perflib-adfs.c
         src/collectors/windows.plugin/perflib-rrd.c
         src/collectors/windows.plugin/perflib-rrd.h
         src/collectors/windows.plugin/perflib-ad.c
@@ -2263,16 +2269,24 @@ if(ENABLE_LIBUNWIND)
   if(TARGET PkgConfig::LIBUNWIND)
     set(HAVE_LIBUNWIND On)
 
+    if(STATIC_BUILD)
+      set(unwind_prefix /libunwind-static/lib/libunwind-)
+      set(suffix ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    else()
+      set(unwind_prefix -lunwind-)
+      set(suffix "")
+    endif()
+
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(amd64)")
-      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND -lunwind-x86_64)
+      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND ${unwind_prefix}x86_64${suffix})
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^i?.86")
-      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND -lunwind-x86)
+      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND ${unwind_prefix}x86${suffix})
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(aarch64)")
-      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND -lunwind-aarch64)
+      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND ${unwind_prefix}aarch64${suffix})
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND -lunwind-arm)
+      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND ${unwind_prefix}arm${suffix})
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "p(ower)?pc64")
-      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND -lunwind-ppc64)
+      target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND ${unwind_prefix}ppc64${suffix})
     else()
       message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR} for libunwind. Stack traces may not work.")
       target_link_libraries(libnetdata PUBLIC PkgConfig::LIBUNWIND)
@@ -2723,6 +2737,8 @@ if(ENABLE_PLUGIN_EBPF)
             src/collectors/ebpf.plugin/ebpf_shm.h
             src/collectors/ebpf.plugin/ebpf_socket.c
             src/collectors/ebpf.plugin/ebpf_socket.h
+            src/collectors/ebpf.plugin/ebpf_socket_ipc.c
+            src/collectors/ebpf.plugin/ebpf_socket_ipc.h
             src/collectors/ebpf.plugin/ebpf_softirq.c
             src/collectors/ebpf.plugin/ebpf_softirq.h
             src/collectors/ebpf.plugin/ebpf_sync.c
@@ -2743,7 +2759,7 @@ if(ENABLE_PLUGIN_EBPF)
             src/collectors/ebpf.plugin/libbpf_api/ebpf.h
     )
 
-    add_executable(ebpf.plugin ${EBPF_PLUGIN_FILES})
+    add_executable(ebpf.plugin ${EBPF_PLUGIN_FILES} ${INTERCOMMUNICATION_COLLECTORS_FILES})
     target_link_libraries(ebpf.plugin libnetdata)
 
     netdata_add_libbpf_to_target(ebpf.plugin)
@@ -3617,6 +3633,18 @@ if(ENABLE_PLUGIN_GO)
     install(FILES ${GO_SD_CONF_FILES}
             COMPONENT plugin-go
             DESTINATION usr/lib/netdata/conf.d/go.d/sd)
+
+    install(DIRECTORY
+            COMPONENT plugin-go
+            DESTINATION usr/lib/netdata/conf.d/go.d/snmp.profiles)
+    install(DIRECTORY
+            COMPONENT plugin-go
+            DESTINATION usr/lib/netdata/conf.d/go.d/snmp.profiles/default)
+
+    file(GLOB GO_SD_CONF_FILES src/go/plugin/go.d/config/go.d/snmp.profiles/default/*.yaml)
+    install(FILES ${GO_SD_CONF_FILES}
+            COMPONENT plugin-go
+            DESTINATION usr/lib/netdata/conf.d/go.d/snmp.profiles/default)
 
     if(BUILD_FOR_PACKAGING)
         install(FILES
